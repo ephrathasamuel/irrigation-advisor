@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Irrigation Advisor</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <h1>Irrigation Advisor</h1>
+      <p>When and how much to water over the next 7 days, from live weather and the FAO-56 crop water method.</p>
+    </div>
+  </header>
+
+  <main class="wrap layout">
+    <section class="panel setup" aria-labelledby="setup-title">
+      <h2 id="setup-title">Your field</h2>
+      <div id="map" role="application" aria-label="Map: tap to choose the field location"></div>
+      <div class="coords">
+        <span id="coords-text">Tap the map to place your field.</span>
+        <button type="button" class="link" id="locate">Use my location</button>
+      </div>
+
+      <form id="form" novalidate>
+        <label>Crop
+          <select id="crop" name="crop"></select>
+        </label>
+        <label id="planting-label">Planting date
+          <input type="date" id="planting_date" name="planting_date" />
+        </label>
+        <label>Soil type
+          <select id="soil" name="soil"></select>
+        </label>
+        <label>Irrigation method
+          <select id="method" name="method"></select>
+        </label>
+        <label>Last full watering or soaking rain <span class="hint">(optional)</span>
+          <input type="date" id="last_wet_date" name="last_wet_date" />
+        </label>
+        <button type="submit" class="primary" id="submit">Get my 7-day plan</button>
+        <p class="error" id="form-error" role="alert" hidden></p>
+      </form>
+    </section>
+
+    <section class="results" id="results" aria-live="polite">
+      <div class="panel empty" id="empty">
+        <h2>How it works</h2>
+        <ol>
+          <li>Pick your field on the map and tell us the crop, planting date and soil.</li>
+          <li>The app downloads the last 14 days and the next 7 days of weather for that spot (Open-Meteo), including reference evapotranspiration.</li>
+          <li>It tracks how much water is left in the root zone each day (FAO-56 water balance) and tells you when the crop will need water and how much.</li>
+          <li>Optionally, AI explains the plan in plain English, Amharic or Afaan Oromo.</li>
+        </ol>
+      </div>
+
+      <div id="output" hidden>
+        <div class="panel headline" id="headline"></div>
+        <ul class="warnings" id="warnings"></ul>
+        <div class="stats" id="stats"></div>
+
+        <div class="panel">
+          <h2>Soil water and daily water use</h2>
+          <p class="sub">Bars: crop water use and rain per day (mm). Line: how much water the root zone has lost. Water before the line crosses the dashed limit.</p>
+          <div class="chart"><canvas id="balance-chart"></canvas></div>
+        </div>
+
+        <div class="panel">
+          <h2>Day by day</h2>
+          <div class="table-wrap"><table id="days-table"></table></div>
+        </div>
+
+        <div class="panel ai" id="ai-panel">
+          <h2>Explain it simply</h2>
+          <div class="ai-controls">
+            <select id="language" aria-label="Language"></select>
+            <button type="button" class="primary" id="explain">Explain this plan</button>
+          </div>
+          <p class="sub" id="ai-note"></p>
+          <div class="ai-text" id="ai-text"></div>
+        </div>
+
+        <div class="panel" id="climate-panel">
+          <h2>Long-term climate here</h2>
+          <p class="sub" id="climate-text"></p>
+          <div class="chart small"><canvas id="climate-chart"></canvas></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    Weather: Open-Meteo. Climate normals: NASA POWER. Method: FAO Irrigation and Drainage Paper 56.
+    This is an estimate from weather data. Always check soil moisture in the field.
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
