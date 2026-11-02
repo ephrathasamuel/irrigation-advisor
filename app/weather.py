@@ -1,6 +1,7 @@
 """Weather (Open-Meteo) and long-term climate (NASA POWER) for a point."""
 
 import calendar
+import re
 from datetime import date, datetime, timedelta, timezone
 
 import requests
@@ -89,8 +90,9 @@ def fetch_climate(lat, lon, session=requests):
             "rain_mm": round(mm_per_day * days_in_month),
             "temp_c": round(t, 1),
         })
+    years = re.findall(r"\b(?:19|20)\d{2}\b", data.get("header", {}).get("range", ""))
     return {
         "months": months,
         "annual_rain_mm": sum(m["rain_mm"] for m in months),
-        "period": data.get("header", {}).get("range", "long-term average"),
+        "period": f"{years[0]}–{years[-1]} average" if len(years) >= 2 else "long-term average",
     }

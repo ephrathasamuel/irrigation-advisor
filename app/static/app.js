@@ -191,9 +191,12 @@ function renderBalanceChart(plan) {
       datasets: [
         { type: "bar", label: "Crop water use (mm)", data: days.map((d) => d.etc), backgroundColor: "#c08a52", yAxisID: "y" },
         { type: "bar", label: "Rain (mm)", data: days.map((d) => d.rain), backgroundColor: "#7fb3e0", yAxisID: "y" },
-        { type: "bar", label: "Irrigation (mm, net)", data: days.map((d) => d.irrigation_net || null), backgroundColor: "#1f6fb2", yAxisID: "y" },
         { type: "line", label: "Soil water used (mm)", data: days.map((d) => d.depletion_before_irrigation), borderColor: "#155c39",
-          backgroundColor: "#155c39", tension: 0.2, pointRadius: 2, yAxisID: "y2",
+          tension: 0.2, yAxisID: "y2",
+          // Irrigation days get a large blue point: the soil is refilled after that day.
+          pointRadius: days.map((d) => (d.irrigation_net ? 7 : 2)),
+          pointBackgroundColor: days.map((d) => (d.irrigation_net ? "#1f6fb2" : "#155c39")),
+          pointBorderColor: days.map((d) => (d.irrigation_net ? "#1f6fb2" : "#155c39")),
           segment: { borderDash: (ctx) => (days[ctx.p1DataIndex]?.forecast ? [5, 4] : undefined) } },
         { type: "line", label: "Water before this (RAW)", data: days.map((d) => d.raw), borderColor: "#b42318",
           borderDash: [3, 3], pointRadius: 0, borderWidth: 1.5, yAxisID: "y2" },
@@ -202,7 +205,17 @@ function renderBalanceChart(plan) {
     options: {
       maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
-      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+      plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            footer: (items) => {
+              const d = days[items[0].dataIndex];
+              return d.irrigation_net ? `Irrigate: ${num(d.irrigation_gross)} mm applied (${num(d.irrigation_net)} mm to the roots)` : "";
+            },
+          },
+        },
+      },
       scales: {
         y: { position: "left", title: { display: true, text: "mm per day" }, beginAtZero: true },
         y2: { position: "right", reverse: true, beginAtZero: true, title: { display: true, text: "soil water used (mm)" },

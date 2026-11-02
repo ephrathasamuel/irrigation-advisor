@@ -73,7 +73,7 @@ def test_climate_converts_mm_per_day_to_monthly_totals():
     jan = result["months"][0]
     assert jan == {"month": "Jan", "rain_mm": 62, "temp_c": 15.0}
     assert result["months"][3]["rain_mm"] == 60  # April has 30 days
-    assert result["period"].startswith("25-year")
+    assert result["period"] == "2001–2025 average"
 
 
 def test_climate_fill_values_are_rejected():

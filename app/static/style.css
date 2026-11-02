@@ -35,6 +35,7 @@ body {
   margin-top: 18px;
   align-items: start;
 }
+.layout > * { min-width: 0; } /* let wide tables scroll inside their box instead of widening the page */
 @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
 
 .panel {
