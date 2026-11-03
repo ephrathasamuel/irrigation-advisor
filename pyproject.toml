@@ -1,0 +1,15 @@
+[project]
+name = "irrigation-advisor"
+version = "1.0.0"
+description = "AI-assisted irrigation planner: live weather, NASA POWER climate data and the FAO-56 crop water method."
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1",
+    "anthropic>=2.3",
+    "python-dotenv>=1.2",
+    "requests>=2.32",
+]
+
+[tool.vercel]
+# Vercel serves the Flask app object created in run.py.
+entrypoint = "run:app"
