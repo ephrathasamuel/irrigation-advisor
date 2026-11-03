@@ -144,13 +144,8 @@ main.wrap { padding-top: 24px; min-height: 60vh; }
   background: linear-gradient(90deg, rgba(8, 20, 12, 0.82) 0%, rgba(8, 20, 12, 0.6) 48%, rgba(8, 20, 12, 0.15) 100%);
 }
 .hero-inner { position: relative; padding: 48px; max-width: 700px; color: #fff; }
-.hero h1 { font-size: clamp(32px, 4.6vw, 52px); line-height: 1.1; margin: 16px 0 14px; letter-spacing: -0.5px; color: #fff; }
+.hero h1 { font-size: clamp(32px, 4.6vw, 52px); line-height: 1.1; margin: 0 0 14px; letter-spacing: -0.5px; color: #fff; }
 .hero .lead { color: rgba(255, 255, 255, 0.88); margin: 0 0 22px; }
-.badge {
-  display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
-  background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.28); color: #fff;
-}
-.badge span:first-child { color: #f6c453; }
 .hero-search {
   display: flex; align-items: center; gap: 8px; background: #fff; border-radius: 16px; padding: 6px 6px 6px 14px;
   max-width: 560px; color: #5d6d64; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
