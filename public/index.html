@@ -4,112 +4,264 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Irrigation Advisor</title>
-  <meta name="description" content="When and how much to irrigate over the next 7 days, from live weather, NASA POWER climate data and the FAO-56 crop water method, with plain-language advice in English, Amharic and Afaan Oromo." />
+  <meta name="description" content="When and how much to irrigate over the next 7 days, from live weather, soil maps and the FAO-56 crop water method. In English and Amharic." />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Irrigation Advisor" />
-  <meta property="og:description" content="7-day irrigation plans for any field from live weather and the FAO-56 crop water method." />
-  <meta property="og:image" content="https://irrigation-advisor-ojin.vercel.app/og.png" />
+  <meta property="og:description" content="7-day watering plans for any field from live weather, soil maps and the FAO-56 crop water method. English and Amharic." />
+  <meta property="og:image" content="https://irrigation-advisor.vercel.app/og.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="theme-color" content="#155c39" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3C11 11 7 16 7 21a9 9 0 0 0 18 0c0-5-4-10-9-18z' fill='%231f6fb2'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="/static/style.css" />
+  <script>
+    // Apply the saved or system theme before the page paints, so there is no flash.
+    (function () {
+      var saved = null;
+      try { saved = localStorage.getItem("ia-theme"); } catch (e) {}
+      var dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    })();
+  </script>
 </head>
 <body>
   <header class="top">
-    <div class="wrap">
-      <h1>Irrigation Advisor</h1>
-      <p>When and how much to water over the next 7 days, from live weather and the FAO-56 crop water method.</p>
+    <div class="wrap top-row">
+      <a href="#home" class="brand" aria-label="Irrigation Advisor home">
+        <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><path d="M16 3C11 11 7 16 7 21a9 9 0 0 0 18 0c0-5-4-10-9-18z" fill="#7cc4ff"/><path d="M12 22a4 4 0 0 0 4 4" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+        <span data-i18n="app.name">Irrigation Advisor</span>
+      </a>
+      <div class="controls">
+        <div class="lang-switch" role="group" data-i18n-aria="ui.language" aria-label="Language">
+          <button type="button" data-lang="en">English</button>
+          <button type="button" data-lang="am">አማርኛ</button>
+        </div>
+        <button type="button" class="theme-btn" id="theme-btn" aria-pressed="false">
+          <span class="icon" aria-hidden="true">☾</span> <span id="theme-label">Dark</span>
+        </button>
+      </div>
     </div>
+    <nav class="wrap tabs" aria-label="Main">
+      <a href="#home" data-page="home" data-i18n="nav.home">Home</a>
+      <a href="#plan" data-page="plan" data-i18n="nav.plan">My plan</a>
+      <a href="#weather" data-page="weather" data-i18n="nav.weather">Weather</a>
+      <a href="#field" data-page="field" data-i18n="nav.field">My field</a>
+      <a href="#guide" data-page="guide" data-i18n="nav.guide">Guide</a>
+    </nav>
   </header>
 
-  <main class="wrap layout">
-    <section class="panel setup" aria-labelledby="setup-title">
-      <h2 id="setup-title">Your field</h2>
-      <div id="map" role="application" aria-label="Map: tap to choose the field location"></div>
-      <div class="coords">
-        <span id="coords-text">Tap the map to place your field.</span>
-        <button type="button" class="link" id="locate">Use my location</button>
+  <main class="wrap">
+    <!-- ================= HOME ================= -->
+    <section class="page" id="page-home">
+      <div class="hero">
+        <div class="hero-text">
+          <h1 data-i18n="home.title">Water your crops at the right time, with the right amount</h1>
+          <p class="lead" data-i18n="home.lead"></p>
+          <div class="hero-actions">
+            <a class="primary big" href="#plan" data-i18n="home.cta">Make my watering plan</a>
+            <a class="ghost" href="#guide" data-i18n="home.cta_guide">How it works</a>
+          </div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <svg viewBox="0 0 320 220" class="field-art">
+            <defs>
+              <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--sky-1)"/><stop offset="1" stop-color="var(--sky-2)"/></linearGradient>
+            </defs>
+            <rect width="320" height="220" rx="18" fill="url(#sky)"/>
+            <circle cx="262" cy="52" r="24" fill="#f6c453"/>
+            <path d="M0 140 Q80 112 160 132 T320 126 V220 H0Z" fill="var(--hill)"/>
+            <g fill="var(--rows)">
+              <path d="M0 170 L320 150 L320 158 L0 180Z"/><path d="M0 190 L320 166 L320 174 L0 200Z"/><path d="M0 210 L320 182 L320 190 L0 220Z"/>
+            </g>
+            <g fill="#3fae6b">
+              <path d="M60 168 q4-18 0-28 q-4 10 0 28z"/><path d="M110 164 q4-18 0-28 q-4 10 0 28z"/><path d="M160 160 q4-18 0-28 q-4 10 0 28z"/>
+              <path d="M210 156 q4-18 0-28 q-4 10 0 28z"/><path d="M260 152 q4-18 0-28 q-4 10 0 28z"/>
+            </g>
+            <g fill="#4aa3f0">
+              <path d="M96 60c-6 9-10 14-10 19a10 10 0 0 0 20 0c0-5-4-10-10-19z"/>
+              <path d="M140 84c-4 6-7 10-7 13a7 7 0 0 0 14 0c0-3-3-7-7-13z" opacity=".8"/>
+              <path d="M70 92c-4 6-7 10-7 13a7 7 0 0 0 14 0c0-3-3-7-7-13z" opacity=".7"/>
+            </g>
+          </svg>
+        </div>
       </div>
 
-      <form id="form" novalidate>
-        <label>Crop
-          <select id="crop" name="crop"></select>
-        </label>
-        <label id="planting-label">Planting date
-          <input type="date" id="planting_date" name="planting_date" />
-        </label>
-        <label>Soil type
-          <select id="soil" name="soil"></select>
-        </label>
-        <label>Irrigation method
-          <select id="method" name="method"></select>
-        </label>
-        <label>Last full watering or soaking rain <span class="hint">(optional)</span>
-          <input type="date" id="last_wet_date" name="last_wet_date" />
-        </label>
-        <button type="submit" class="primary" id="submit">Get my 7-day plan</button>
-        <p class="error" id="form-error" role="alert" hidden></p>
-      </form>
+      <div class="cards three">
+        <div class="card"><h3 data-i18n="home.step1_t"></h3><p data-i18n="home.step1"></p></div>
+        <div class="card"><h3 data-i18n="home.step2_t"></h3><p data-i18n="home.step2"></p></div>
+        <div class="card"><h3 data-i18n="home.step3_t"></h3><p data-i18n="home.step3"></p></div>
+      </div>
+
+      <div class="panel today-card" id="home-today" hidden>
+        <h2 data-i18n="home.today_t">Example field today</h2>
+        <p class="big" id="home-today-head"></p>
+        <p class="sub" id="home-today-sub"></p>
+        <a href="#plan" class="link-btn" data-i18n="home.today_more">See the full plan</a>
+      </div>
+
+      <div class="panel subtle">
+        <h2 data-i18n="home.data_t">Built on trusted data</h2>
+        <p data-i18n="home.data"></p>
+        <p class="sub" data-i18n="home.note"></p>
+      </div>
     </section>
 
-    <section class="results" id="results" aria-live="polite">
-      <div class="panel empty" id="empty">
-        <h2>How it works</h2>
-        <ol>
-          <li>Pick your field on the map and tell us the crop, planting date and soil.</li>
-          <li>The app downloads the last 14 days and the next 7 days of weather for that spot (Open-Meteo), including reference evapotranspiration.</li>
-          <li>It tracks how much water is left in the root zone each day (FAO-56 water balance) and tells you when the crop will need water and how much.</li>
-          <li>Optionally, AI explains the plan in plain English, Amharic or Afaan Oromo.</li>
-        </ol>
+    <!-- ================= PLAN ================= -->
+    <section class="page layout" id="page-plan" hidden>
+      <div class="panel setup">
+        <h2 data-i18n="plan.step_place">Where is your field?</h2>
+        <form class="search" id="search-form">
+          <input type="search" id="search-q" data-i18n-ph="plan.search_ph" autocomplete="off" aria-label="Search place" />
+          <button type="submit" class="secondary" data-i18n="plan.search_btn">Find</button>
+        </form>
+        <ul class="search-results" id="search-results" hidden></ul>
+        <p class="error" id="search-msg" hidden></p>
+        <div id="map" role="application" aria-label="Map"></div>
+        <div class="coords">
+          <span id="coords-text" data-i18n="plan.map_hint"></span>
+          <button type="button" class="link" id="locate" data-i18n="plan.locate">Use my location</button>
+        </div>
+
+        <form id="form" novalidate>
+          <h2 class="form-h" data-i18n="plan.step_crop">What are you growing?</h2>
+          <label for="crop" data-i18n="plan.crop">Crop</label>
+          <select id="crop" name="crop"></select>
+          <p class="help" id="crop-desc"></p>
+          <p class="help" data-i18n="plan.crop_help"></p>
+
+          <div id="planting-block">
+            <label for="planting_date" data-i18n="plan.planting">When was it planted?</label>
+            <div class="chips" id="weeks-chips"></div>
+            <input type="date" id="planting_date" name="planting_date" />
+            <p class="help" data-i18n="plan.planting_help"></p>
+          </div>
+
+          <label for="soil" data-i18n="plan.soil">What is your soil like?</label>
+          <select id="soil" name="soil"></select>
+          <p class="help" id="soil-desc"></p>
+          <button type="button" class="secondary small" id="soil-suggest" data-i18n="plan.soil_suggest">Not sure? Suggest from soil maps</button>
+          <p class="help strong" id="soil-msg" hidden></p>
+          <p class="help" data-i18n="plan.soil_help"></p>
+
+          <label for="method" data-i18n="plan.method">How do you water?</label>
+          <select id="method" name="method"></select>
+          <p class="help" data-i18n="plan.method_help"></p>
+
+          <label for="last_wet_date"><span data-i18n="plan.last_wet">When was the field last fully wet?</span> <span class="hint" data-i18n="plan.last_wet_hint">(optional)</span></label>
+          <input type="date" id="last_wet_date" name="last_wet_date" />
+          <p class="help" data-i18n="plan.last_wet_help"></p>
+
+          <button type="submit" class="primary" id="submit" data-i18n="plan.submit">Get my 7-day plan</button>
+          <p class="error" id="form-error" role="alert" hidden></p>
+        </form>
       </div>
 
-      <div id="output" hidden>
-        <p class="example-note" id="example-note" hidden>
-          <strong>Example plan:</strong> a wheat field on farmland near Bishoftu, planted 55 days ago, clay soil.
-          Tap the map to plan your own field.
-        </p>
-        <div class="panel headline" id="headline"></div>
-        <ul class="warnings" id="warnings"></ul>
-        <div class="stats" id="stats"></div>
+      <div class="results" id="results" aria-live="polite">
+        <p class="example-note" id="example-note" data-i18n="plan.example" hidden></p>
+        <div class="panel loading" id="plan-loading" data-i18n="ui.loading">Loading…</div>
+        <div id="output" hidden>
+          <div class="panel headline" id="headline"></div>
+          <ul class="warnings" id="warnings"></ul>
+          <div class="stats" id="stats"></div>
 
-        <div class="panel">
-          <h2>Soil water and daily water use</h2>
-          <p class="sub">Bars: crop water use and rain per day (mm). Green line: how much water the root zone has lost (dotted = forecast). Water before it reaches the red dashed limit; blue points are planned irrigations.</p>
-          <div class="chart"><canvas id="balance-chart"></canvas></div>
-        </div>
-
-        <div class="panel">
-          <h2>Day by day</h2>
-          <div class="table-wrap"><table id="days-table"></table></div>
-        </div>
-
-        <div class="panel ai" id="ai-panel">
-          <h2>Explain it simply</h2>
-          <div class="ai-controls">
-            <select id="language" aria-label="Language"></select>
-            <button type="button" class="primary" id="explain">Explain this plan</button>
+          <div class="panel">
+            <h2 data-i18n="res.chart_t">Soil water and daily water use</h2>
+            <details class="explain"><summary data-i18n="ui.what_is_this">What does this mean?</summary><p data-i18n="res.chart_help"></p></details>
+            <div class="chart"><canvas id="balance-chart"></canvas></div>
           </div>
-          <p class="sub" id="ai-note"></p>
-          <div class="ai-text" id="ai-text"></div>
-        </div>
 
-        <div class="panel" id="climate-panel">
-          <h2>Long-term climate here</h2>
+          <div class="panel ai" id="ai-panel">
+            <h2 data-i18n="res.ai_t">Explain it simply</h2>
+            <p class="sub" id="ai-note"></p>
+            <button type="button" class="primary" id="explain" data-i18n="res.ai_btn">Explain this plan</button>
+            <div class="ai-text" id="ai-text"></div>
+          </div>
+
+          <details class="panel table-panel">
+            <summary><h2 data-i18n="res.table_t">Day by day details</h2></summary>
+            <div class="table-wrap"><table id="days-table"></table></div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= WEATHER ================= -->
+    <section class="page" id="page-weather" hidden>
+      <h1 class="page-h" data-i18n="wx.title">Weather at your field</h1>
+      <p class="sub place-line" id="wx-place"></p>
+      <div class="panel empty-state" id="wx-none" data-i18n="wx.none"></div>
+      <div id="wx-body" hidden>
+        <p class="panel summary-line" id="wx-summary"></p>
+        <h2 class="section-h" data-i18n="wx.next_t">Next 7 days</h2>
+        <div class="day-cards" id="wx-days"></div>
+        <div class="panel">
+          <h2 data-i18n="wx.past_t">Last 14 days</h2>
+          <details class="explain"><summary data-i18n="ui.what_is_this">What does this mean?</summary><p data-i18n="wx.chart_help"></p></details>
+          <div class="chart"><canvas id="wx-chart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= FIELD ================= -->
+    <section class="page" id="page-field" hidden>
+      <h1 class="page-h" data-i18n="field.title">My field</h1>
+      <div class="panel empty-state" id="field-none" data-i18n="field.none"></div>
+      <div id="field-body" hidden>
+        <div class="cards two">
+          <div class="panel">
+            <h2 data-i18n="field.place_t">Location</h2>
+            <dl class="facts">
+              <dt data-i18n="field.coords">Coordinates</dt><dd id="field-coords"></dd>
+              <dt data-i18n="field.elev">Height above sea level</dt><dd id="field-elev"></dd>
+            </dl>
+            <p class="help" data-i18n="field.elev_help"></p>
+            <div id="field-map" class="mini-map"></div>
+          </div>
+          <div class="panel">
+            <h2 data-i18n="field.soil_t">Soil at this spot</h2>
+            <div id="soil-box"><p class="sub" data-i18n="ui.loading">Loading…</p></div>
+          </div>
+        </div>
+        <div class="panel" id="climate-panel" hidden>
+          <h2 data-i18n="field.climate_t">Normal rainfall here</h2>
           <p class="sub" id="climate-text"></p>
           <div class="chart small"><canvas id="climate-chart"></canvas></div>
         </div>
       </div>
     </section>
+
+    <!-- ================= GUIDE ================= -->
+    <section class="page guide" id="page-guide" hidden>
+      <h1 class="page-h" data-i18n="guide.title">Guide</h1>
+      <p class="lead" data-i18n="guide.lead"></p>
+      <details class="panel" open><summary><h2 data-i18n="guide.how_t"></h2></summary><p data-i18n="guide.how"></p></details>
+      <details class="panel"><summary><h2 data-i18n="guide.soil_t"></h2></summary>
+        <p data-i18n="guide.soil"></p>
+        <ul class="soil-list">
+          <li><span class="swatch s-sand"></span><span data-i18n="guide.soil_sand"></span></li>
+          <li><span class="swatch s-sandy_loam"></span><span data-i18n="guide.soil_sandy_loam"></span></li>
+          <li><span class="swatch s-loam"></span><span data-i18n="guide.soil_loam"></span></li>
+          <li><span class="swatch s-clay_loam"></span><span data-i18n="guide.soil_clay_loam"></span></li>
+          <li><span class="swatch s-clay"></span><span data-i18n="guide.soil_clay"></span></li>
+        </ul>
+        <p class="sub" data-i18n="guide.soil_maps"></p>
+      </details>
+      <details class="panel"><summary><h2 data-i18n="guide.method_t"></h2></summary>
+        <ul><li data-i18n="guide.method_furrow"></li><li data-i18n="guide.method_sprinkler"></li><li data-i18n="guide.method_drip"></li></ul>
+      </details>
+      <details class="panel"><summary><h2 data-i18n="guide.mm_t"></h2></summary><p data-i18n="guide.mm"></p></details>
+      <details class="panel"><summary><h2 data-i18n="guide.words_t"></h2></summary>
+        <ul><li data-i18n="guide.w_et0"></li><li data-i18n="guide.w_kc"></li><li data-i18n="guide.w_raw"></li><li data-i18n="guide.w_taw"></li><li data-i18n="guide.w_eff"></li></ul>
+      </details>
+      <details class="panel"><summary><h2 data-i18n="guide.limits_t"></h2></summary><p data-i18n="guide.limits"></p></details>
+    </section>
   </main>
 
-  <footer class="wrap foot">
-    Weather: Open-Meteo. Climate normals: NASA POWER. Method: FAO Irrigation and Drainage Paper 56.
-    This is an estimate from weather data. Always check soil moisture in the field.
-  </footer>
+  <footer class="wrap foot" data-i18n="foot"></footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="/static/i18n.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>
