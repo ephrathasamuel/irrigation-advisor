@@ -1,12 +1,17 @@
 # Irrigation Advisor: when and how much to water, from live weather
 
-Irrigation Advisor tells a farmer or extension officer **when to irrigate over the next 7 days and how much water to apply**. You pick the field on a map and enter the crop, planting date, soil and irrigation method. The app downloads real weather for that spot, runs the FAO-56 crop water method day by day, and turns the result into a plan. An AI model can then explain the plan in plain English, Amharic or Afaan Oromo.
+Irrigation Advisor tells a farmer or extension officer **when to irrigate over the next 7 days and how much water to apply**. You find the field by typing a village name or tapping the map, then enter the crop, planting date, soil and irrigation method. The app downloads real weather for that spot, reads world soil maps to suggest the soil type, runs the FAO-56 crop water method day by day, and turns the result into a plan. The whole interface is available in **English and Amharic**, in light and dark themes, with a plain-language explanation under every question.
 
-It is a working prototype built in Python (Flask) with a small JavaScript front end.
+**Live:** https://irrigation-advisor.vercel.app
+
+It is a working prototype built in Python (Flask) with a plain JavaScript front end.
 
 <p>
-  <img src="docs/screenshot.png" alt="Irrigation Advisor: plan for wheat near Bishoftu, with soil water chart, daily table and climate normals" width="68%" />
-  <img src="docs/screenshot-mobile.png" alt="The same plan on a phone" width="22%" />
+  <img src="docs/screenshot.png" alt="Irrigation Advisor: plan for wheat near Bishoftu, with soil water chart" width="68%" />
+  <img src="docs/screenshot-mobile.png" alt="Weather page in Amharic, dark theme, on a phone" width="22%" />
+</p>
+<p>
+  <img src="docs/screenshot-field.png" alt="My field: soil texture from SoilGrids, pH, organic matter, elevation and climate normals" width="68%" />
 </p>
 
 ---
@@ -19,7 +24,7 @@ python -m venv .venv
 pip install -r requirements.txt
 copy .env.example .env            # macOS/Linux: cp .env.example .env  (optional, for AI)
 python run.py                     # http://127.0.0.1:5000
-python -m pytest                  # 34 tests
+python -m pytest                  # 58 tests
 ```
 
 The weather and climate sources are free and need no keys. Without an `ANTHROPIC_API_KEY` the app still calculates every plan; only the "Explain it simply" button is turned off, and the page says why.
@@ -27,6 +32,18 @@ The weather and climate sources are free and need no keys. Without an `ANTHROPIC
 ---
 
 ## What you get
+
+Five sections, reachable from the top menu:
+
+- **Home:** what the app does, the three steps, and today's advice for the example field.
+- **My plan:** the form and the plan. The field can be found by **typing a village or town** (Open-Meteo geocoding) or tapping the map; planting date has quick choices such as "8 weeks ago"; soil has a **"Not sure? Suggest from soil maps"** button; every question has a plain explanation.
+- **Weather:** the next 7 days as cards (temperature, rain and its chance, wind, crop thirst, watering days marked) and the last 14 days as a chart.
+- **My field:** soil at the exact spot from **SoilGrids** (sand, silt and clay %, USDA texture class, pH, organic carbon, black cotton soil warning), elevation, and long-term rainfall from NASA POWER.
+- **Guide:** how the plan is calculated, how to identify soil by hand (the ribbon test), which watering method is which, what "mm of water" means, and every term used.
+
+Language (English or Amharic) and theme (light or dark) are switched from the header and remembered on the device. The first visit opens with a real example plan for a wheat field near Bishoftu, so every page has content straight away.
+
+In the plan itself:
 
 - **A headline answer:** for example "Irrigate Saturday, 7 November: apply 189 mm", with the litres per hectare and how much of it reaches the roots.
 - **This week at a glance:** crop water use, forecast rain and how much of it is useful, how much soil water has already been used, crop stage, Kc and root depth.
@@ -62,10 +79,12 @@ All formulas and crop and soil values come from **FAO Irrigation and Drainage Pa
 | `app/crops.py` | Crop, soil and irrigation-method tables, with FAO-56 sources |
 | `app/fao56.py` | Growth stages, Kc, roots, effective rain, stress and the daily water balance |
 | `app/weather.py` | Open-Meteo forecast and history, NASA POWER climate normals, friendly errors |
+| `app/site.py` | SoilGrids soil texture (0-60 cm average), USDA texture triangle, soil suggestion, elevation |
 | `app/plan.py` | Input checks, the starting soil state, the 7-day plan and its summary and warnings |
 | `app/advisor.py` | AI explanation through the Anthropic SDK, with error and refusal handling |
-| `app/__init__.py` | Flask routes: `/api/options`, `/api/plan`, `/api/explain` |
-| `public/` | The page: Leaflet map, Chart.js charts, plain JavaScript and CSS (served by Vercel's CDN, or by Flask locally) |
+| `app/__init__.py` | Flask routes: `/api/options`, `/api/plan`, `/api/site`, `/api/explain` |
+| `public/` | The site: five sections, Leaflet maps, Chart.js charts, plain JavaScript and CSS (served by Vercel's CDN, or by Flask locally) |
+| `public/static/i18n.js` | Every visible string in English and Amharic |
 | `tests/` | pytest suites; every external service is mocked |
 
 ---
@@ -76,12 +95,15 @@ All formulas and crop and soil values come from **FAO Irrigation and Drainage Pa
 python -m pytest
 ```
 
-There are 34 tests covering:
+There are 58 tests covering:
 - the Kc curve, root growth, effective rain, the stress coefficient, and the water balance checked against hand-worked FAO-56 numbers
 - irrigation timing and amounts
 - parsing Open-Meteo and NASA POWER responses and handling their errors
 - input checks and the plan API
 - the AI request, refusals, and what happens when there's no key or a plan has expired
+- the USDA texture triangle (all 12 classes), reading SoilGrids layers by depth, the soil suggestion and black cotton soil flag
+- the `/api/site` endpoint, including when one of its two sources is down
+- the daily weather list and warning codes used for translation, and the AI fallback that uses the plan sent by the page
 
 The app was also run against the real Open-Meteo and NASA POWER services for Bishoftu, Ethiopia. The screenshots above come from that run, driven in headless Chrome.
 
@@ -112,5 +134,7 @@ Ideas for next steps: soil moisture sensors or satellite soil moisture (e.g. SMA
 
 - Weather and ET₀: [Open-Meteo](https://open-meteo.com/) Forecast API (CC BY 4.0)
 - Climate normals: [NASA POWER](https://power.larc.nasa.gov/) climatology API
+- Soil: [SoilGrids 2.0](https://soilgrids.org/) by ISRIC (CC BY 4.0), 250 m resolution
+- Elevation and place search: [Open-Meteo](https://open-meteo.com/) elevation and geocoding APIs (GeoNames data)
 - Method: FAO Irrigation and Drainage Paper No. 56, *Crop evapotranspiration*
 - Map: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, via [Leaflet](https://leafletjs.com/)
