@@ -7,6 +7,9 @@ Irrigation Advisor tells a farmer or extension officer **when to irrigate over t
 It is a working prototype built in Python (Flask) with a plain JavaScript front end.
 
 <p>
+  <img src="docs/screenshot-home.png" alt="Home page: photo hero of Ethiopian highland farmland, place search and feature strip" width="92%" />
+</p>
+<p>
   <img src="docs/screenshot.png" alt="Irrigation Advisor: plan for wheat near Bishoftu, with soil water chart" width="68%" />
   <img src="docs/screenshot-mobile.png" alt="Weather page in Amharic, dark theme, on a phone" width="22%" />
 </p>
@@ -137,4 +140,6 @@ Ideas for next steps: soil moisture sensors or satellite soil moisture (e.g. SMA
 - Soil: [SoilGrids 2.0](https://soilgrids.org/) by ISRIC (CC BY 4.0), 250 m resolution
 - Elevation and place search: [Open-Meteo](https://open-meteo.com/) elevation and geocoding APIs (GeoNames data)
 - Method: FAO Irrigation and Drainage Paper No. 56, *Crop evapotranspiration*
+- Home page photo: Ethiopian highlands by [Erik Hathaway](https://unsplash.com/photos/aerial-photography-of-mountain-eRFC0_U0hGE) on Unsplash (Unsplash License)
+- Fonts: Fraunces, Plus Jakarta Sans and Noto Sans Ethiopic from Google Fonts (SIL Open Font License)
 - Map: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, via [Leaflet](https://leafletjs.com/)

@@ -51,6 +51,7 @@ function applyThemeButton() {
   $("theme-btn").setAttribute("aria-pressed", String(dark));
   $("theme-btn").querySelector(".icon").textContent = dark ? "☀" : "☾";
   $("theme-label").textContent = dark ? t("ui.theme_light") : t("ui.theme_dark");
+  $("theme-btn").title = $("theme-label").textContent;
 }
 $("theme-btn").addEventListener("click", () => {
   const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
@@ -62,13 +63,22 @@ $("theme-btn").addEventListener("click", () => {
 
 function applyLanguage(lang) {
   setLanguage(lang);
-  for (const b of document.querySelectorAll(".lang-switch button")) b.setAttribute("aria-pressed", String(b.dataset.lang === currentLang));
+  // The button shows the language you can switch to, like Addis Eats.
+  $("lang-btn").textContent = currentLang === "am" ? "EN" : "አማ";
   applyThemeButton();
   if (state.options) fillOptions();
   renderChips();
   rerenderAll();
 }
-for (const b of document.querySelectorAll(".lang-switch button")) b.addEventListener("click", () => applyLanguage(b.dataset.lang));
+$("lang-btn").addEventListener("click", () => applyLanguage(currentLang === "am" ? "en" : "am"));
+
+// Hero search: go to My plan and look the place up there.
+$("hero-search").addEventListener("submit", (e) => {
+  e.preventDefault();
+  $("search-q").value = $("hero-q").value;
+  location.hash = "#plan";
+  setTimeout(() => $("search-form").requestSubmit(), 80);
+});
 
 function rerenderAll() {
   if (state.plan) renderPlan(state.plan);
@@ -344,7 +354,7 @@ function renderBalanceChart(plan) {
   chartDefaults();
   const days = plan.days.filter((d) => d.stage);
   const water = css("--water");
-  const green = css("--green");
+  const green = css("--accent");
   const labels = days.map((d) => fmtDay(d.date, { day: "numeric", month: "short" }) + (d.date === plan.summary.today ? ` (${t("res.today")})` : ""));
   state.charts.balance?.destroy();
   state.charts.balance = new Chart($("balance-chart"), {
