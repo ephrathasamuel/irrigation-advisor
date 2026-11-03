@@ -1,7 +1,10 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-const state = { lat: null, lon: null, marker: null, plan: null, charts: {}, options: null };
+const state = { lat: null, lon: null, marker: null, plan: null, charts: {}, options: null, example: false };
+
+// Shown on first visit so the page opens with a real plan instead of an empty form.
+const EXAMPLE = { lat: 8.656, lon: 39.035, crop: "wheat", soil: "clay", daysSincePlanting: 55 };
 
 // ---------- map ----------
 const map = L.map("map", { scrollWheelZoom: false }).setView([9.0, 39.5], 6);
@@ -18,12 +21,18 @@ function setLocation(lat, lon, zoom) {
   if (zoom) map.setView([lat, lon], zoom);
   $("coords-text").textContent = `Field: ${state.lat.toFixed(4)}, ${state.lon.toFixed(4)}`;
 }
-map.on("click", (e) => setLocation(e.latlng.lat, e.latlng.lng));
+map.on("click", (e) => {
+  state.example = false;
+  setLocation(e.latlng.lat, e.latlng.lng);
+});
 
 $("locate").addEventListener("click", () => {
   if (!navigator.geolocation) return showFormError("This browser can't share its location.");
   navigator.geolocation.getCurrentPosition(
-    (pos) => setLocation(pos.coords.latitude, pos.coords.longitude, 12),
+    (pos) => {
+      state.example = false;
+      setLocation(pos.coords.latitude, pos.coords.longitude, 12);
+    },
     () => showFormError("Location permission was refused. Tap the map instead."),
   );
 });
@@ -69,6 +78,9 @@ function showFormError(message) {
   $("form-error").hidden = !message;
 }
 
+// Any change by the visitor means the next plan is theirs, not the example.
+$("form").addEventListener("change", () => { state.example = false; });
+
 $("form").addEventListener("submit", async (e) => {
   e.preventDefault();
   showFormError("");
@@ -98,7 +110,8 @@ $("form").addEventListener("submit", async (e) => {
     if (!res.ok) return showFormError(data.error || "Something went wrong.");
     state.plan = data;
     render(data);
-    if (window.matchMedia("(max-width: 860px)").matches) $("results").scrollIntoView({ behavior: "smooth" });
+    $("example-note").hidden = !state.example;
+    if (!state.example && window.matchMedia("(max-width: 860px)").matches) $("results").scrollIntoView({ behavior: "smooth" });
   } catch {
     showFormError("Could not reach the server. Is it still running?");
   } finally {
@@ -332,4 +345,16 @@ $("explain").addEventListener("click", async () => {
   }
 });
 
-loadOptions().catch(() => showFormError("Could not load the crop list. Is the server running?"));
+function showExample() {
+  $("crop").value = EXAMPLE.crop;
+  syncPerennial();
+  $("soil").value = EXAMPLE.soil;
+  $("planting_date").value = isoDaysAgo(EXAMPLE.daysSincePlanting);
+  setLocation(EXAMPLE.lat, EXAMPLE.lon, 11);
+  state.example = true;
+  $("form").requestSubmit();
+}
+
+loadOptions()
+  .then(showExample)
+  .catch(() => showFormError("Could not load the crop list. Is the server running?"));

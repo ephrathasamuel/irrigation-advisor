@@ -119,3 +119,14 @@ td.irrigate { color: var(--water); font-weight: 700; }
 .ai-text .meta { color: var(--muted); font-size: 12px; margin-top: 12px; }
 
 .foot { color: var(--muted); font-size: 12px; padding-bottom: 24px; }
+
+/* First-visit example banner */
+.example-note {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: #e8f1fb;
+  color: #164a78;
+  border: 1px solid #c7dcf2;
+  font-size: 14px;
+}
