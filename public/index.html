@@ -40,6 +40,7 @@
       <nav class="tabs" aria-label="Main">
         <a href="#home" data-page="home" data-i18n="nav.home">Home</a>
         <a href="#plan" data-page="plan" data-i18n="nav.plan">My plan</a>
+        <a href="#season" data-page="season" data-i18n="nav.season">Season &amp; pond</a>
         <a href="#weather" data-page="weather" data-i18n="nav.weather">Weather</a>
         <a href="#field" data-page="field" data-i18n="nav.field">My field</a>
         <a href="#guide" data-page="guide" data-i18n="nav.guide">Guide</a>
@@ -181,6 +182,76 @@
           <details class="panel table-panel">
             <summary><h2 data-i18n="res.table_t">Day by day details</h2></summary>
             <div class="table-wrap"><table id="days-table"></table></div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SEASON & POND ================= -->
+    <section class="page" id="page-season" hidden>
+      <h1 class="page-h" data-i18n="season.title">Water until harvest, and your storage pond</h1>
+      <p class="lead" data-i18n="season.lead"></p>
+      <div class="layout">
+        <form class="panel season-form" id="season-form" novalidate>
+          <div class="q">
+            <span class="q-label" data-i18n="season.where">Field location</span>
+            <p class="place-chip" id="season-place"></p>
+            <a href="#plan" class="link-btn small-link" data-i18n="season.where_change">Change on My plan</a>
+          </div>
+          <div class="q">
+            <label for="season-crop" data-i18n="plan.crop">Crop</label>
+            <select id="season-crop"></select>
+          </div>
+          <div class="q">
+            <label for="season-planting" data-i18n="season.planting">Planting date</label>
+            <input type="date" id="season-planting" />
+            <p class="help" data-i18n="season.planting_help"></p>
+          </div>
+          <div class="q">
+            <label for="season-area" data-i18n="season.area">Field size</label>
+            <div class="inline">
+              <input type="number" id="season-area" min="0" step="any" value="500" inputmode="decimal" />
+              <select id="season-unit" aria-label="Unit">
+                <option value="m2" data-i18n="season.unit_m2">square metres (m²)</option>
+                <option value="ha" data-i18n="season.unit_ha">hectares</option>
+                <option value="timad" data-i18n="season.unit_timad">timad</option>
+              </select>
+            </div>
+            <p class="help" data-i18n="season.area_help"></p>
+          </div>
+          <div class="q">
+            <label for="season-method" data-i18n="plan.method">How do you water?</label>
+            <select id="season-method"></select>
+          </div>
+          <fieldset class="q">
+            <legend data-i18n="season.lining">Will the pond be lined?</legend>
+            <label class="radio"><input type="radio" name="lining" value="lined" checked /> <span data-i18n="season.lined"></span></label>
+            <label class="radio"><input type="radio" name="lining" value="unlined" /> <span data-i18n="season.unlined"></span></label>
+            <p class="help" data-i18n="season.lining_help"></p>
+          </fieldset>
+          <button type="submit" class="primary" id="season-submit" data-i18n="season.submit">Calculate water until harvest</button>
+          <p class="error" id="season-error" role="alert" hidden></p>
+        </form>
+
+        <div id="season-out" hidden>
+          <div class="panel headline" id="season-head"></div>
+          <div class="stats" id="season-stats"></div>
+          <div class="panel pond-card">
+            <h2 data-i18n="season.pond_t">Pond to dig</h2>
+            <div id="pond-body"></div>
+          </div>
+          <div class="panel">
+            <h2 data-i18n="season.chart_t">Water needed each day until harvest</h2>
+            <details class="explain"><summary data-i18n="ui.what_is_this">What does this mean?</summary><p data-i18n="season.chart_help"></p></details>
+            <div class="chart"><canvas id="season-chart"></canvas></div>
+          </div>
+          <details class="panel table-panel" open>
+            <summary><h2 data-i18n="season.table_t">Month by month</h2></summary>
+            <div class="table-wrap"><table id="season-table"></table></div>
+          </details>
+          <details class="panel">
+            <summary><h2 data-i18n="season.how_t">How is this calculated?</h2></summary>
+            <p class="help-body" data-i18n="season.how"></p>
           </details>
         </div>
       </div>

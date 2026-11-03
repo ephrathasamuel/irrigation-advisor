@@ -27,7 +27,7 @@ python -m venv .venv
 pip install -r requirements.txt
 copy .env.example .env            # macOS/Linux: cp .env.example .env  (optional, for AI)
 python run.py                     # http://127.0.0.1:5000
-python -m pytest                  # 58 tests
+python -m pytest                  # 78 tests
 ```
 
 The weather and climate sources are free and need no keys. Without an `ANTHROPIC_API_KEY` the app still calculates every plan; only the "Explain it simply" button is turned off, and the page says why.
@@ -40,6 +40,7 @@ Five sections, reachable from the top menu:
 
 - **Home:** what the app does, the three steps, and today's advice for the example field.
 - **My plan:** the form and the plan. The field can be found by **typing a village or town** (Open-Meteo geocoding) or tapping the map; planting date has quick choices such as "8 weeks ago"; soil has a **"Not sure? Suggest from soil maps"** button; every question has a plain explanation.
+- **Season & pond:** the water the crop needs **every day from planting to harvest** (planting can be a future date), totals for the field in mm, litres and m³, a month-by-month table, and the **storage pond to dig**: how much it must hold including evaporation and seepage losses (lined or unlined), with top, bottom and depth dimensions and a cross-section drawing.
 - **Weather:** the next 7 days as cards (temperature, rain and its chance, wind, crop thirst, watering days marked) and the last 14 days as a chart.
 - **My field:** soil at the exact spot from **SoilGrids** (sand, silt and clay %, USDA texture class, pH, organic carbon, black cotton soil warning), elevation, and long-term rainfall from NASA POWER.
 - **Guide:** how the plan is calculated, how to identify soil by hand (the ribbon test), which watering method is which, what "mm of water" means, and every term used.
@@ -82,10 +83,11 @@ All formulas and crop and soil values come from **FAO Irrigation and Drainage Pa
 | `app/crops.py` | Crop, soil and irrigation-method tables, with FAO-56 sources |
 | `app/fao56.py` | Growth stages, Kc, roots, effective rain, stress and the daily water balance |
 | `app/weather.py` | Open-Meteo forecast and history, NASA POWER climate normals, friendly errors |
+| `app/season.py` | Whole-season budget: monthly Penman-Monteith ET₀ from NASA POWER averages, daily crop need to harvest, useful rain, storage pond size |
 | `app/site.py` | SoilGrids soil texture (0-60 cm average), USDA texture triangle, soil suggestion, elevation |
 | `app/plan.py` | Input checks, the starting soil state, the 7-day plan and its summary and warnings |
 | `app/advisor.py` | AI explanation through the Anthropic SDK, with error and refusal handling |
-| `app/__init__.py` | Flask routes: `/api/options`, `/api/plan`, `/api/site`, `/api/explain` |
+| `app/__init__.py` | Flask routes: `/api/options`, `/api/plan`, `/api/season`, `/api/site`, `/api/explain` |
 | `public/` | The site: five sections, Leaflet maps, Chart.js charts, plain JavaScript and CSS (served by Vercel's CDN, or by Flask locally) |
 | `public/static/i18n.js` | Every visible string in English and Amharic |
 | `tests/` | pytest suites; every external service is mocked |
@@ -98,7 +100,7 @@ All formulas and crop and soil values come from **FAO Irrigation and Drainage Pa
 python -m pytest
 ```
 
-There are 58 tests covering:
+There are 78 tests covering:
 - the Kc curve, root growth, effective rain, the stress coefficient, and the water balance checked against hand-worked FAO-56 numbers
 - irrigation timing and amounts
 - parsing Open-Meteo and NASA POWER responses and handling their errors
@@ -106,6 +108,7 @@ There are 58 tests covering:
 - the AI request, refusals, and what happens when there's no key or a plan has expired
 - the USDA texture triangle (all 12 classes), reading SoilGrids layers by depth, the soil suggestion and black cotton soil flag
 - the `/api/site` endpoint, including when one of its two sources is down
+- the season budget: FAO-56 Penman-Monteith checked against FAO-56 Example 17 (5.72 mm/day), USDA-SCS useful rain, pond volume and shape, future planting, perennials and input checks
 - the daily weather list and warning codes used for translation, and the AI fallback that uses the plan sent by the page
 
 The app was also run against the real Open-Meteo and NASA POWER services for Bishoftu, Ethiopia. The screenshots above come from that run, driven in headless Chrome.

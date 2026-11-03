@@ -27,10 +27,12 @@ function isoDaysAgo(n) {
   d.setDate(d.getDate() - n);
   return d.toISOString().slice(0, 10);
 }
+// English names used inside a sentence are lower case ("using furrow / basin").
+const midSentence = (name) => (currentLang === "en" ? name.toLowerCase() : name);
 const stageName = (s) => (s ? t(`stage.${s}`) : "–");
 
 // ---------- pages ----------
-const PAGES = ["home", "plan", "weather", "field", "guide"];
+const PAGES = ["home", "plan", "season", "weather", "field", "guide"];
 function showPage() {
   const page = PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : "home";
   for (const p of PAGES) $(`page-${p}`).hidden = p !== page;
@@ -41,6 +43,7 @@ function showPage() {
   if (page === "plan") ensureMainMap();
   if (page === "field") renderField();
   if (page === "weather") renderWeather();
+  if (page === "season") renderSeasonForm();
   window.scrollTo(0, 0);
 }
 window.addEventListener("hashchange", showPage);
@@ -86,6 +89,7 @@ function rerenderAll() {
   const page = location.hash.slice(1);
   if (page === "weather") renderWeather();
   if (page === "field") renderField();
+  if (page === "season") { renderSeasonForm(); if (state.season) renderSeason(state.season); }
 }
 
 // ---------- maps ----------
@@ -184,6 +188,7 @@ function fillOptions() {
   }
   if (keep) $("method").value = keep;
   syncDescriptions();
+  fillSeasonSelects();
 }
 function syncDescriptions() {
   const crop = state.options.crops.find((c) => c.id === $("crop").value);
@@ -297,7 +302,7 @@ function headlineText(plan) {
     big: t("res.go_t", { when, mm: num(first.gross_mm) }),
     small: `${t("res.go", {
       litres: whole(first.litres_per_ha), perm2: num(first.gross_mm, 0),
-      method: t(`method.${plan.inputs.method}`), net: num(first.net_mm),
+      method: midSentence(t(`method.${plan.inputs.method}`)), net: num(first.net_mm),
     })} ${more}`,
   };
 }
@@ -624,6 +629,199 @@ function renderClimate(climate) {
     },
     options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, title: { display: true, text: "mm" } } } },
   });
+}
+
+// ---------- season & pond page ----------
+const AREA_FACTORS = { m2: 1, ha: 10000, timad: 2500 }; // timad taken as 0.25 ha
+
+function areaLabel(value, unit) {
+  const names = { m2: "m²", ha: currentLang === "am" ? "ሄክታር" : "ha", timad: currentLang === "am" ? "ጥማድ" : "timad" };
+  return `${Number(value).toLocaleString(locale())} ${names[unit]}`;
+}
+
+function renderSeasonForm() {
+  const has = state.lat !== null;
+  $("season-place").textContent = has
+    ? `${state.place ? state.place + " · " : ""}${state.lat.toFixed(4)}, ${state.lon.toFixed(4)}`
+    : t("season.where_none");
+  if (!state.options) return;
+  // Start from the answers on My plan, once.
+  if (!state.seasonFilled) {
+    $("season-crop").value = $("crop").value;
+    $("season-method").value = $("method").value;
+    $("season-planting").value = $("planting_date").value || isoDaysAgo(0);
+    state.seasonFilled = true;
+  }
+}
+
+function fillSeasonSelects() {
+  fillSelect($("season-crop"), state.options.crops, "crop");
+  const keep = $("season-method").value;
+  $("season-method").innerHTML = "";
+  for (const m of state.options.methods) {
+    $("season-method").appendChild(el("option", { value: m.id }, `${t(`method.${m.id}`)} (${t(`method.${m.id}_d`)})`));
+  }
+  if (keep) $("season-method").value = keep;
+}
+
+$("season-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const err = $("season-error");
+  err.hidden = true;
+  if (state.lat === null) { err.textContent = t("season.err_place"); err.hidden = false; return; }
+  const value = parseFloat($("season-area").value);
+  const unit = $("season-unit").value;
+  if (!(value > 0)) { err.textContent = t("season.err_area"); err.hidden = false; return; }
+  const body = {
+    lat: state.lat, lon: state.lon, crop: $("season-crop").value, method: $("season-method").value,
+    planting_date: $("season-planting").value, area_m2: value * AREA_FACTORS[unit],
+    lining: document.querySelector("input[name=lining]:checked").value,
+  };
+  const button = $("season-submit");
+  button.disabled = true;
+  button.textContent = t("season.working");
+  try {
+    const res = await fetch("/api/season", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.error || t("plan.err_server"); err.hidden = false; return; }
+    data.areaText = areaLabel(value, unit);
+    data.unit = unit;
+    state.season = data;
+    renderSeason(data);
+  } catch {
+    err.textContent = t("plan.err_server");
+    err.hidden = false;
+  } finally {
+    button.disabled = false;
+    button.textContent = t("season.submit");
+  }
+});
+
+function pondDiagram(size) {
+  // Cross-section of the pit, drawn to scale horizontally; labels in the visitor's language.
+  const w = 340, h = 150, pad = 40;
+  const scale = (w - 2 * pad) / size.top_side_m;
+  const top = size.top_side_m * scale, bottom = size.bottom_side_m * scale;
+  const depthPx = Math.min(90, Math.max(40, size.depth_m * scale));
+  const x0 = (w - top) / 2, y0 = 30, xb = (w - bottom) / 2;
+  const svg = `
+    <svg viewBox="0 0 ${w} ${h}" class="pond-svg" role="img" aria-label="${t("season.pond_t")}">
+      <rect x="0" y="${y0 - 6}" width="${w}" height="6" fill="#9a7b4f" opacity=".5"/>
+      <polygon points="${x0},${y0} ${x0 + top},${y0} ${xb + bottom},${y0 + depthPx} ${xb},${y0 + depthPx}" fill="var(--water)" opacity=".28" stroke="var(--water)" stroke-width="2"/>
+      <line x1="${x0}" y1="${y0 - 14}" x2="${x0 + top}" y2="${y0 - 14}" stroke="currentColor" stroke-width="1"/>
+      <text x="${w / 2}" y="${y0 - 18}" text-anchor="middle" font-size="11" fill="currentColor">${t("season.pond_top")} ${size.top_side_m} m</text>
+      <text x="${w / 2}" y="${y0 + depthPx + 16}" text-anchor="middle" font-size="11" fill="currentColor">${t("season.pond_bottom")} ${size.bottom_side_m} m</text>
+      <line x1="${x0 + top + 10}" y1="${y0}" x2="${x0 + top + 10}" y2="${y0 + depthPx}" stroke="currentColor" stroke-width="1"/>
+      <text x="${x0 + top + 14}" y="${y0 + depthPx / 2 + 4}" font-size="11" fill="currentColor">${size.depth_m} m</text>
+    </svg>`;
+  const wrap = el("div", { class: "pond-figure" });
+  wrap.innerHTML = svg;
+  return wrap;
+}
+
+function renderSeason(data) {
+  $("season-out").hidden = false;
+  const tt = data.totals;
+  // Mid-sentence crop names are lower case in English ("Your wheat needs…").
+  const crop = currentLang === "en" ? t(`crop.${data.inputs.crop}`).toLowerCase() : t(`crop.${data.inputs.crop}`);
+  const longDate = (iso) => fmtDay(iso, { day: "numeric", month: "long", year: "numeric" });
+  const head = $("season-head");
+  head.innerHTML = "";
+  head.append(
+    el("p", { class: "big" }, t("season.head", { crop, m3: whole(tt.remaining_m3) })),
+    el("p", { class: "small" }, t("season.head_sub", {
+      litres: whole(tt.remaining_m3 * 1000), area: data.areaText,
+      from: data.planted ? t("res.today") : longDate(data.inputs.planting_date),
+      harvest: longDate(data.harvest_date), days: data.remaining_days, method: midSentence(t(`method.${data.inputs.method}`)),
+    })),
+  );
+
+  const stats = [
+    [t("season.stat_use"), `${whole(tt.etc_mm)} mm`, t("season.stat_use_n")],
+    [t("season.stat_rain"), `${whole(tt.effective_rain_mm)} mm`, t("season.stat_rain_n")],
+    [t("season.stat_apply"), `${whole(tt.gross_mm)} mm`, t("season.stat_apply_n", { m3: whole(tt.gross_m3) })],
+    [t("season.stat_day"), `${whole(tt.average_litres_per_day)} L`,
+      t("season.stat_day_n", { date: fmtDay(tt.peak_day.date, { day: "numeric", month: "short" }), litres: whole(tt.peak_day.litres) })],
+  ];
+  const box = $("season-stats");
+  box.innerHTML = "";
+  for (const [label, value, note] of stats) {
+    const card = el("div", { class: "stat" });
+    card.append(el("div", { class: "label" }, label), el("div", { class: "value" }, value), el("div", { class: "note" }, note));
+    box.appendChild(card);
+  }
+
+  const pond = $("pond-body");
+  pond.innerHTML = "";
+  const p = data.pond;
+  if (!p.size) {
+    pond.appendChild(el("p", { class: "soil-result" }, t("season.pond_none")));
+  } else {
+    const facts = el("div", { class: "pond-facts" });
+    facts.append(
+      el("p", { class: "soil-result" }, t("season.pond_store", { m3: whole(p.storage_m3), litres: whole(p.storage_m3 * 1000) })),
+      el("p", { class: "sub" }, t("season.pond_store_n", { loss: Math.round(p.loss_share * 100) })),
+    );
+    const dims = el("dl", { class: "facts" });
+    for (const [k, v] of [["season.pond_top", `${p.size.top_side_m} m × ${p.size.top_side_m} m`],
+      ["season.pond_bottom", `${p.size.bottom_side_m} m × ${p.size.bottom_side_m} m`],
+      ["season.pond_depth", `${p.size.depth_m} m`]]) {
+      dims.append(el("dt", {}, t(k)), el("dd", {}, v));
+    }
+    facts.append(dims, el("p", { class: "help" }, t("season.pond_slope")));
+    if (p.storage_m3 > 2000) facts.appendChild(el("p", { class: "vertisol" }, t("season.pond_big")));
+    const row = el("div", { class: "pond-row" });
+    row.append(facts, pondDiagram(p.size));
+    pond.appendChild(row);
+    const tips = el("div", { class: "tips" });
+    tips.appendChild(el("h3", {}, t("season.tips_t")));
+    const ul = el("ul");
+    for (const k of ["season.tip1", "season.tip2", "season.tip3", "season.tip4"]) ul.appendChild(el("li", {}, t(k)));
+    tips.appendChild(ul);
+    pond.appendChild(tips);
+  }
+
+  chartDefaults();
+  state.charts.season?.destroy();
+  const days = data.days;
+  state.charts.season = new Chart($("season-chart"), {
+    data: {
+      labels: days.map((d) => fmtDay(d.date, { day: "numeric", month: "short" })),
+      datasets: [
+        { type: "bar", label: t("season.chart_litres"), data: days.map((d) => d.litres), yAxisID: "y",
+          backgroundColor: days.map((d) => (d.remaining ? css("--accent") : "rgba(140,150,145,.45)")) },
+        { type: "line", label: t("season.chart_rain"), data: days.map((d) => d.effective_rain), yAxisID: "y2",
+          borderColor: css("--water"), pointRadius: 0, borderWidth: 2, tension: 0.3 },
+      ],
+    },
+    options: {
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+      scales: {
+        y: { beginAtZero: true, title: { display: true, text: "L" } },
+        y2: { position: "right", beginAtZero: true, title: { display: true, text: "mm" }, grid: { drawOnChartArea: false } },
+        x: { ticks: { maxTicksLimit: 12, maxRotation: 0, font: { size: 10 } } },
+      },
+    },
+  });
+
+  const table = $("season-table");
+  table.innerHTML = "";
+  const hr = el("tr");
+  for (const k of ["month", "days", "use", "rain", "apply", "m3"]) hr.appendChild(el("th", {}, t(`season.tbl_${k}`)));
+  const thead = el("thead");
+  thead.appendChild(hr);
+  const tbody = el("tbody");
+  for (const m of data.monthly) {
+    const [y, mo] = m.month.split("-").map(Number);
+    const name = new Date(y, mo - 1, 1).toLocaleDateString(locale(), { month: "long", year: "numeric" });
+    const row = el("tr");
+    [name, m.days, num(m.etc_mm, 0), num(m.effective_rain_mm, 0), num(m.gross_mm, 0), num(m.m3, 1)]
+      .forEach((c) => row.appendChild(el("td", {}, String(c))));
+    tbody.appendChild(row);
+  }
+  table.append(thead, tbody);
 }
 
 // ---------- start ----------
