@@ -5,7 +5,9 @@ import uuid
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 
-from flask import Flask, jsonify, request
+from pathlib import Path
+
+from flask import Flask, jsonify, request, send_from_directory
 
 from . import advisor, weather
 from .crops import CROPS, METHODS, SOILS
@@ -13,11 +15,13 @@ from .plan import InputError, build_plan, parse_inputs
 
 PLAN_TTL_SECONDS = 60 * 60
 MAX_STORED_PLANS = 500
+# The page lives in public/ so Vercel can serve it from its CDN; Flask serves the same files locally.
+PUBLIC_DIR = Path(__file__).resolve().parent.parent / "public"
 
 
 def create_app(fetch_forecast=weather.fetch_forecast, fetch_climate=weather.fetch_climate,
                explain=advisor.explain, ai_available=advisor.ai_available):
-    app = Flask(__name__, static_folder="static", static_url_path="/static")
+    app = Flask(__name__, static_folder=str(PUBLIC_DIR / "static"), static_url_path="/static")
     # Plans are kept briefly so the AI explains exactly the numbers the user saw.
     plans = OrderedDict()
     pool = ThreadPoolExecutor(max_workers=8)
@@ -32,7 +36,7 @@ def create_app(fetch_forecast=weather.fetch_forecast, fetch_climate=weather.fetc
 
     @app.get("/")
     def index():
-        return app.send_static_file("index.html")
+        return send_from_directory(PUBLIC_DIR, "index.html")
 
     @app.get("/api/options")
     def options():

@@ -65,7 +65,7 @@ All formulas and crop and soil values come from **FAO Irrigation and Drainage Pa
 | `app/plan.py` | Input checks, the starting soil state, the 7-day plan and its summary and warnings |
 | `app/advisor.py` | AI explanation through the Anthropic SDK, with error and refusal handling |
 | `app/__init__.py` | Flask routes: `/api/options`, `/api/plan`, `/api/explain` |
-| `app/static/` | The page: Leaflet map, Chart.js charts, plain JavaScript and CSS |
+| `public/` | The page: Leaflet map, Chart.js charts, plain JavaScript and CSS (served by Vercel's CDN, or by Flask locally) |
 | `tests/` | pytest suites; every external service is mocked |
 
 ---
