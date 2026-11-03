@@ -69,10 +69,15 @@ def fetch_forecast(lat, lon, session=requests):
     }
 
 
+def _valid(v):
+    return None if v is None or v <= -999 else round(float(v), 2)
+
+
 def fetch_climate(lat, lon, session=requests):
     """Monthly normals (rain in mm/month, mean temperature) from NASA POWER."""
     params = {
-        "parameters": "PRECTOTCORR,T2M",
+        # Extra parameters feed the FAO-56 Penman-Monteith monthly ET0 used by the season budget.
+        "parameters": "PRECTOTCORR,T2M,T2M_RANGE,RH2M,WS2M,ALLSKY_SFC_SW_DWN",
         "community": "AG",
         "latitude": lat,
         "longitude": lon,
@@ -97,10 +102,17 @@ def fetch_climate(lat, lon, session=requests):
             "month": calendar.month_abbr[m],
             "rain_mm": round(mm_per_day * days_in_month),
             "temp_c": round(t, 1),
+            # Optional; older responses and test data may not have them.
+            "temp_range_c": _valid(values.get("T2M_RANGE", {}).get(key)),
+            "rh_pct": _valid(values.get("RH2M", {}).get(key)),
+            "wind_ms": _valid(values.get("WS2M", {}).get(key)),
+            "solar_mj": _valid(values.get("ALLSKY_SFC_SW_DWN", {}).get(key)),
         })
     years = re.findall(r"\b(?:19|20)\d{2}\b", data.get("header", {}).get("range", ""))
+    coords = data.get("geometry", {}).get("coordinates", [])
     return {
         "months": months,
+        "elevation_m": coords[2] if len(coords) > 2 else None,
         "annual_rain_mm": sum(m["rain_mm"] for m in months),
         "period": f"{years[0]}–{years[-1]} average" if len(years) >= 2 else "long-term average",
     }

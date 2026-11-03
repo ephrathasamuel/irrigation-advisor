@@ -71,7 +71,9 @@ def _power(rain=0.5, temp=15.0):
 def test_climate_converts_mm_per_day_to_monthly_totals():
     result = fetch_climate(8.75, 38.98, session=FakeSession(FakeResponse(200, _power(rain=2.0))))
     jan = result["months"][0]
-    assert jan == {"month": "Jan", "rain_mm": 62, "temp_c": 15.0}
+    assert {k: jan[k] for k in ("month", "rain_mm", "temp_c")} == {"month": "Jan", "rain_mm": 62, "temp_c": 15.0}
+    # Penman-Monteith inputs are optional: absent from this response, so they are None.
+    assert jan["rh_pct"] is None and jan["solar_mj"] is None
     assert result["months"][3]["rain_mm"] == 60  # April has 30 days
     assert result["period"] == "2001–2025 average"
 

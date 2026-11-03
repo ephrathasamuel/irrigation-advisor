@@ -9,7 +9,9 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
 
-from . import advisor, site, weather
+from datetime import date
+
+from . import advisor, season, site, weather
 from .crops import CROPS, METHODS, SOILS
 from .plan import InputError, build_plan, parse_inputs
 
@@ -21,7 +23,7 @@ PUBLIC_DIR = Path(__file__).resolve().parent.parent / "public"
 
 def create_app(fetch_forecast=weather.fetch_forecast, fetch_climate=weather.fetch_climate,
                explain=advisor.explain, ai_available=advisor.ai_available,
-               fetch_soil=site.fetch_soil, fetch_elevation=site.fetch_elevation):
+               fetch_soil=site.fetch_soil, fetch_elevation=site.fetch_elevation, today=date.today):
     app = Flask(__name__, static_folder=str(PUBLIC_DIR / "static"), static_url_path="/static")
     # Plans are kept briefly so the AI explains exactly the numbers the user saw.
     plans = OrderedDict()
@@ -75,6 +77,22 @@ def create_app(fetch_forecast=weather.fetch_forecast, fetch_climate=weather.fetc
         result["plan_id"] = remember(result)
         result["ai_available"] = ai_available()
         return jsonify(result)
+
+    @app.post("/api/season")
+    def season_budget():
+        """Daily water need from planting to harvest, and the pond to store it."""
+        try:
+            inputs = season.parse_season_inputs(request.get_json(silent=True), today())
+        except season.SeasonError as exc:
+            return jsonify(error=str(exc)), 400
+        try:
+            climate = fetch_climate(inputs["lat"], inputs["lon"])
+        except weather.WeatherError as exc:
+            return jsonify(error=str(exc)), 502
+        try:
+            return jsonify(season.build_season(inputs, climate, today()))
+        except season.SeasonError as exc:
+            return jsonify(error=str(exc)), 502
 
     @app.get("/api/site")
     def site_info():
