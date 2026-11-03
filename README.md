@@ -87,6 +87,14 @@ The app was also run against the real Open-Meteo and NASA POWER services for Bis
 
 ---
 
+## Deploy on Vercel
+
+1. Import this repository in Vercel (framework preset: Flask). No build settings are needed.
+2. Vercel serves the page from `public/` on its CDN and runs the Flask API from `index.py`.
+3. Optional: add `ANTHROPIC_API_KEY` under Settings → Environment Variables to turn on the "Explain it simply" button.
+
+---
+
 ## Limits (this is a prototype)
 
 - **Starting soil state.** The balance assumes the soil was full on the last full watering or soaking rain. Without that date, it assumes the soil was full 14 days ago, and the page warns about it. Sensor readings or a hand check would make this better.
