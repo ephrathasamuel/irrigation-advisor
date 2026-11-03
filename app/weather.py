@@ -17,11 +17,16 @@ class WeatherError(Exception):
     """A data source could not be reached or returned something unusable."""
 
 
+def _at(values, i):
+    return values[i] if values and i < len(values) else None
+
+
 def fetch_forecast(lat, lon, session=requests):
     params = {
         "latitude": lat,
         "longitude": lon,
-        "daily": "et0_fao_evapotranspiration,precipitation_sum,temperature_2m_max,temperature_2m_min",
+        "daily": ("et0_fao_evapotranspiration,precipitation_sum,temperature_2m_max,temperature_2m_min,"
+                  "wind_speed_10m_max,precipitation_probability_max"),
         "past_days": PAST_DAYS,
         "forecast_days": FORECAST_DAYS,
         "timezone": "auto",
@@ -47,6 +52,9 @@ def fetch_forecast(lat, lon, session=requests):
             "rain": daily["precipitation_sum"][i] or 0.0,
             "tmax": daily["temperature_2m_max"][i],
             "tmin": daily["temperature_2m_min"][i],
+            # Optional extras for the weather view; older responses and test data may not have them.
+            "wind_max": _at(daily.get("wind_speed_10m_max"), i),
+            "rain_chance": _at(daily.get("precipitation_probability_max"), i),
         })
     if not days:
         raise WeatherError("Open-Meteo has no evapotranspiration data for this location.")

@@ -57,6 +57,11 @@ def build_plan(inputs, forecast, climate=None, climate_error=None):
     days = forecast["days"]
     first_day = days[0]["date"]
     warnings = []
+    warning_codes = []  # same warnings as codes + values, so the page can show them in the visitor's language
+
+    def warn(code, text, **values):
+        warnings.append(text)
+        warning_codes.append({"code": code, **values})
 
     planting = inputs["planting_date"] or date(today.year - 5, 1, 1)  # perennials: long established
     if planting > today:
@@ -75,15 +80,12 @@ def build_plan(inputs, forecast, climate=None, climate_error=None):
     # the first day of weather data, the last full watering, or planting.
     start = max(d for d in (first_day, last_wet, planting) if d is not None)
     if last_wet is None:
-        warnings.append(
-            f"No last watering date was given, so the soil is assumed to have been fully wet on "
-            f"{start.isoformat()}. Enter the real date for a more accurate plan."
-        )
+        warn("assumed_wet", f"No last watering date was given, so the soil is assumed to have been fully wet on "
+             f"{start.isoformat()}. Enter the real date for a more accurate plan.", date=start.isoformat())
     elif last_wet < first_day:
-        warnings.append(
-            f"Weather history only goes back to {first_day.isoformat()}, so the soil is assumed "
-            f"full on that day rather than on {last_wet.isoformat()}. The real soil may be drier."
-        )
+        warn("history_short", f"Weather history only goes back to {first_day.isoformat()}, so the soil is assumed "
+             f"full on that day rather than on {last_wet.isoformat()}. The real soil may be drier.",
+             date=first_day.isoformat(), last_wet=last_wet.isoformat())
 
     records = water_balance(days, crop, soil["taw_mm_per_m"], planting, start, today, method["efficiency"])
     past = [r for r in records if not r["forecast"] and r["stage"]]
@@ -92,11 +94,11 @@ def build_plan(inputs, forecast, climate=None, climate_error=None):
         raise InputError("There is no forecast data for the coming days at this location.")
 
     if any(r["ks"] is not None and r["ks"] < 1 for r in past):
-        warnings.append("The crop was probably under water stress on some recent days (soil below the readily available water).")
+        warn("recent_stress", "The crop was probably under water stress on some recent days (soil below the readily available water).")
     if any(r["depletion"] is not None and r["taw"] and r["depletion"] >= r["taw"] for r in past):
-        warnings.append("The soil reached wilting point recently. Irrigate as soon as possible.")
+        warn("wilting", "The soil reached wilting point recently. Irrigate as soon as possible.")
     if any(r["stage"] is None for r in future):
-        warnings.append("The season ends during this week; days after harvest need no water.")
+        warn("season_ends", "The season ends during this week; days after harvest need no water.")
 
     events = [r for r in future if r["irrigation_net"] > 0]
     stage, kc, root = crop_stage(crop, (today - planting).days)
@@ -134,7 +136,7 @@ def build_plan(inputs, forecast, climate=None, climate_error=None):
         month = climate["months"][today.month - 1]
         climate_context = {**climate, "this_month": month}
     elif climate_error:
-        warnings.append(climate_error)
+        warn("climate_unavailable", climate_error)
 
     return {
         "inputs": {
@@ -153,6 +155,14 @@ def build_plan(inputs, forecast, climate=None, climate_error=None):
         "days": records,
         "climate": climate_context,
         "warnings": warnings,
+        "warning_codes": warning_codes,
+        # Every day fetched (14 past + 7 forecast), for the weather view.
+        "weather": [
+            {"date": d["date"].isoformat(), "forecast": d["date"] >= today,
+             "tmax": d.get("tmax"), "tmin": d.get("tmin"), "rain": round(d.get("rain") or 0.0, 1),
+             "et0": round(d["et0"], 2), "wind_max": d.get("wind_max"), "rain_chance": d.get("rain_chance")}
+            for d in days
+        ],
     }
 
 
