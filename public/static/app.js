@@ -19,8 +19,32 @@ function el(tag, attrs = {}, text) {
 }
 const num = (v, d = 1) => (v === null || v === undefined ? "–" : Number(v).toFixed(d));
 const whole = (v) => Math.round(v).toLocaleString(locale());
-const fmtDay = (iso, opts = { weekday: "short", day: "numeric", month: "short" }) =>
-  new Date(iso + "T00:00:00").toLocaleDateString(locale(), opts);
+// Ethiopian calendar, used whenever the page is in Amharic. Meskerem 1 falls on 11 September
+// (12 September before a Gregorian leap year), so dates are converted, not just renamed.
+const ETH_MONTHS = ["መስከረም", "ጥቅምት", "ኅዳር", "ታኅሣሥ", "ጥር", "የካቲት", "መጋቢት", "ሚያዝያ", "ግንቦት", "ሰኔ", "ሐምሌ", "ነሐሴ", "ጳጉሜ"];
+const ethiopian = () => locale() === "am-ET";
+
+// Gregorian date -> Ethiopian {year, month (1-13), day}, via the Julian Day Number.
+function toEthiopian(y, m, d) {
+  const a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
+  const jdn = d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+  const r = (jdn - 1723856) % 1461, n = (r % 365) + 365 * Math.floor(r / 1460);
+  return { year: 4 * Math.floor((jdn - 1723856) / 1461) + Math.floor(r / 365) - Math.floor(r / 1460), month: Math.floor(n / 30) + 1, day: (n % 30) + 1 };
+}
+
+const fmtDay = (iso, opts = { weekday: "short", day: "numeric", month: "short" }) => {
+  const date = new Date(iso + "T00:00:00");
+  if (!ethiopian()) return date.toLocaleDateString(locale(), opts);
+  const e = toEthiopian(date.getFullYear(), date.getMonth() + 1, date.getDate());
+  const weekday = opts.weekday ? date.toLocaleDateString("am-ET", { weekday: opts.weekday }) + "፣ " : "";
+  return `${weekday}${ETH_MONTHS[e.month - 1]} ${e.day}${opts.year ? ` ${e.year} ዓ.ም.` : ""}`;
+};
+
+// Name for a Gregorian calendar month (0-11), e.g. for monthly climate averages. In Amharic this
+// is the Ethiopian month covering most of it: Ethiopian months start around the 10th, so January
+// is mostly Tir and July mostly Hamle.
+const monthLabel = (index, style = "long") =>
+  ethiopian() ? ETH_MONTHS[(index + 4) % 12] : new Date(2026, index, 1).toLocaleDateString(locale(), { month: style });
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 function isoDaysAgo(n) {
   const d = new Date();
@@ -64,8 +88,23 @@ $("theme-btn").addEventListener("click", () => {
   rerenderAll();
 });
 
+// Date pickers are drawn by the browser in the Gregorian calendar, so in Amharic each one
+// shows the Ethiopian date of the chosen day underneath.
+function showEthiopianDates() {
+  for (const input of document.querySelectorAll('input[type="date"]')) {
+    let note = input.nextElementSibling;
+    if (!note || !note.classList.contains("eth-date")) {
+      note = el("small", { class: "eth-date" });
+      input.after(note);
+      input.addEventListener("input", showEthiopianDates);
+    }
+    note.textContent = ethiopian() && input.value ? `= ${fmtDay(input.value, { day: "numeric", month: "long", year: "numeric" })}` : "";
+  }
+}
+
 function applyLanguage(lang) {
   setLanguage(lang);
+  showEthiopianDates();
   // The button shows the language you can switch to, like Addis Eats.
   $("lang-btn").textContent = currentLang === "am" ? "EN" : "አማ";
   applyThemeButton();
@@ -197,6 +236,7 @@ function syncDescriptions() {
   $("soil-desc").textContent = t(`soil.${$("soil").value}_d`);
 }
 function renderChips() {
+  showEthiopianDates();
   const box = $("weeks-chips");
   box.innerHTML = "";
   for (const w of WEEK_CHIPS) {
@@ -614,11 +654,11 @@ function renderClimate(climate) {
   if (!climate) return;
   chartDefaults();
   const m = climate.this_month;
-  const monthName = (i) => new Date(2026, i, 1).toLocaleDateString(locale(), { month: "short" });
+  const monthName = (i) => monthLabel(i, "short");
   const thisIndex = climate.months.findIndex((x) => x.month === m.month);
   $("climate-text").textContent = t("field.climate", {
     period: String(climate.period).replace(" average", ""), annual: whole(climate.annual_rain_mm),
-    month: new Date(2026, thisIndex, 1).toLocaleDateString(locale(), { month: "long" }), rain: m.rain_mm, temp: m.temp_c,
+    month: monthLabel(thisIndex), rain: m.rain_mm, temp: m.temp_c,
   });
   state.charts.climate = new Chart($("climate-chart"), {
     type: "bar",
@@ -650,6 +690,7 @@ function renderSeasonForm() {
     $("season-crop").value = $("crop").value;
     $("season-method").value = $("method").value;
     $("season-planting").value = $("planting_date").value || isoDaysAgo(0);
+    showEthiopianDates();
     state.seasonFilled = true;
   }
 }
@@ -815,7 +856,11 @@ function renderSeason(data) {
   const tbody = el("tbody");
   for (const m of data.monthly) {
     const [y, mo] = m.month.split("-").map(Number);
-    const name = new Date(y, mo - 1, 1).toLocaleDateString(locale(), { month: "long", year: "numeric" });
+    // A planning month runs from the 1st of a Gregorian month; in Amharic it is named by the
+    // Ethiopian month covering most of it, with that month's Ethiopian year.
+    const name = ethiopian()
+      ? `${monthLabel(mo - 1)} ${toEthiopian(y, mo, 15).year}`
+      : new Date(y, mo - 1, 1).toLocaleDateString(locale(), { month: "long", year: "numeric" });
     const row = el("tr");
     [name, m.days, num(m.etc_mm, 0), num(m.effective_rain_mm, 0), num(m.gross_mm, 0), num(m.m3, 1)]
       .forEach((c) => row.appendChild(el("td", {}, String(c))));
