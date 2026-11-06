@@ -351,3 +351,7 @@ input[type="number"] { font: inherit; padding: 11px 13px; border: 1px solid var(
 .help-body { color: var(--muted); }
 
 [hidden] { display: none !important; }
+
+/* Ethiopian date under a date picker, shown in Amharic */
+.eth-date { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; }
+.eth-date:empty { display: none; }
