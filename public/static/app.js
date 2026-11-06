@@ -32,6 +32,15 @@ function toEthiopian(y, m, d) {
   return { year: 4 * Math.floor((jdn - 1723856) / 1461) + Math.floor(r / 365) - Math.floor(r / 1460), month: Math.floor(n / 30) + 1, day: (n % 30) + 1 };
 }
 
+// Ethiopian date -> Gregorian "YYYY-MM-DD", via the Julian Day Number.
+function fromEthiopian(y, m, d) {
+  const jdn = 1723856 + 365 + 365 * (y - 1) + Math.floor(y / 4) + 30 * m + d - 31;
+  const a = jdn + 32044, b = Math.floor((4 * a + 3) / 146097), c = a - Math.floor((146097 * b) / 4);
+  const dd = Math.floor((4 * c + 3) / 1461), e = c - Math.floor((1461 * dd) / 4), mm = Math.floor((5 * e + 2) / 153);
+  const day = e - Math.floor((153 * mm + 2) / 5) + 1, month = mm + 3 - 12 * Math.floor(mm / 10), year = 100 * b + dd - 4800 + Math.floor(mm / 10);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 const fmtDay = (iso, opts = { weekday: "short", day: "numeric", month: "short" }) => {
   const date = new Date(iso + "T00:00:00");
   if (!ethiopian()) return date.toLocaleDateString(locale(), opts);
@@ -114,17 +123,65 @@ function seasonMonths(data) {
   return [...rows.values()];
 }
 
-// Date pickers are drawn by the browser in the Gregorian calendar, so in Amharic each one
-// shows the Ethiopian date of the chosen day underneath.
-function showEthiopianDates() {
-  for (const input of document.querySelectorAll('input[type="date"]')) {
-    let note = input.nextElementSibling;
-    if (!note || !note.classList.contains("eth-date")) {
-      note = el("small", { class: "eth-date" });
-      input.after(note);
-      input.addEventListener("input", showEthiopianDates);
+// Date fields: in English the browser's Gregorian date picker; in Amharic three drop-downs
+// (day, Ethiopian month, Ethiopian year). The hidden date input always keeps the Gregorian
+// value, so the rest of the app and the server are unchanged.
+const ethDaysIn = (year, month) => (month < 13 ? 30 : year % 4 === 3 ? 6 : 5);
+
+function ethOptions(select, values, label, selected) {
+  select.innerHTML = "";
+  select.appendChild(el("option", { value: "" }, label));
+  for (const [value, text] of values) {
+    const o = el("option", { value: String(value) }, String(text));
+    if (String(value) === String(selected)) o.selected = true;
+    select.appendChild(o);
+  }
+}
+
+function buildEthPicker(input) {
+  const day = el("select", { "aria-label": "ቀን" });
+  const month = el("select", { "aria-label": "ወር" });
+  const year = el("select", { "aria-label": "ዓመት" });
+  const picker = el("div", { class: "eth-picker" });
+  picker.append(day, month, year);
+  input.after(picker);
+  const onPick = () => {
+    if (month.value && year.value) {  // keep the day list right for the month (Pagume is 5 or 6 days)
+      const max = ethDaysIn(Number(year.value), Number(month.value));
+      if (day.options.length - 1 !== max) ethOptions(day, Array.from({ length: max }, (_, i) => [i + 1, i + 1]), "ቀን", Math.min(Number(day.value) || 0, max) || "");
     }
-    note.textContent = ethiopian() && input.value ? `= ${fmtDay(input.value, { day: "numeric", month: "long", year: "numeric" })}` : "";
+    if (!(day.value && month.value && year.value)) return;
+    let iso = fromEthiopian(Number(year.value), Number(month.value), Number(day.value));
+    if (input.max && iso > input.max) iso = input.max;  // e.g. a planting date cannot be in the future
+    input.value = iso;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  for (const s of [day, month, year]) s.addEventListener("change", onPick);
+  return picker;
+}
+
+function showEthiopianDates() {
+  const today = new Date();
+  const thisYear = toEthiopian(today.getFullYear(), today.getMonth() + 1, today.getDate()).year;
+  for (const input of document.querySelectorAll('input[type="date"]')) {
+    let picker = input.nextElementSibling;
+    if (!picker || !picker.classList.contains("eth-picker")) picker = buildEthPicker(input);
+    const on = ethiopian();
+    input.hidden = on;
+    picker.hidden = !on;
+    if (!on) continue;
+    const [day, month, year] = picker.querySelectorAll("select");
+    let e = null;
+    if (input.value) {
+      const [y, m, d] = input.value.split("-").map(Number);
+      e = toEthiopian(y, m, d);
+    }
+    const years = [thisYear - 2, thisYear - 1, thisYear, thisYear + 1].map((y) => [y, `${y} ዓ.ም.`]);
+    ethOptions(year, years, "ዓመት", e ? e.year : "");
+    ethOptions(month, ETH_MONTHS.map((n, i) => [i + 1, n]), "ወር", e ? e.month : "");
+    const max = e ? ethDaysIn(e.year, e.month) : 30;
+    ethOptions(day, Array.from({ length: max }, (_, i) => [i + 1, i + 1]), "ቀን", e ? e.day : "");
   }
 }
 
