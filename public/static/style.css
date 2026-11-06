@@ -352,6 +352,8 @@ input[type="number"] { font: inherit; padding: 11px 13px; border: 1px solid var(
 
 [hidden] { display: none !important; }
 
-/* Ethiopian date under a date picker, shown in Amharic */
-.eth-date { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; }
-.eth-date:empty { display: none; }
+/* Ethiopian date entry (day, month, year) used in place of the date picker in Amharic */
+.eth-picker { display: grid; grid-template-columns: 0.8fr 1.4fr 1.2fr; gap: 8px; }
+.eth-picker[hidden] { display: none; }
+
+input[hidden] { display: none !important; }
