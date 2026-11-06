@@ -88,6 +88,32 @@ $("theme-btn").addEventListener("click", () => {
   rerenderAll();
 });
 
+// Monthly rows of the season table. In English these are the server's Gregorian months. In Amharic
+// the daily figures are regrouped into Ethiopian months, which all have 30 days (Pagume 5 or 6);
+// only the first and last rows are shorter, because the season starts at planting and ends at harvest.
+function seasonMonths(data) {
+  if (!ethiopian()) {
+    return data.monthly.map((m) => {
+      const [y, mo] = m.month.split("-").map(Number);
+      return { ...m, name: new Date(y, mo - 1, 1).toLocaleDateString(locale(), { month: "long", year: "numeric" }) };
+    });
+  }
+  const rows = new Map();
+  for (const d of data.days) {
+    const [y, mo, day] = d.date.split("-").map(Number);
+    const e = toEthiopian(y, mo, day);
+    const key = `${e.year}-${e.month}`;
+    if (!rows.has(key)) rows.set(key, { name: `${ETH_MONTHS[e.month - 1]} ${e.year}`, days: 0, etc_mm: 0, effective_rain_mm: 0, gross_mm: 0, m3: 0 });
+    const r = rows.get(key);
+    r.days += 1;
+    r.etc_mm += d.etc;
+    r.effective_rain_mm += d.effective_rain;
+    r.gross_mm += d.gross_mm;
+    r.m3 += d.litres / 1000;
+  }
+  return [...rows.values()];
+}
+
 // Date pickers are drawn by the browser in the Gregorian calendar, so in Amharic each one
 // shows the Ethiopian date of the chosen day underneath.
 function showEthiopianDates() {
@@ -854,15 +880,9 @@ function renderSeason(data) {
   const thead = el("thead");
   thead.appendChild(hr);
   const tbody = el("tbody");
-  for (const m of data.monthly) {
-    const [y, mo] = m.month.split("-").map(Number);
-    // A planning month runs from the 1st of a Gregorian month; in Amharic it is named by the
-    // Ethiopian month covering most of it, with that month's Ethiopian year.
-    const name = ethiopian()
-      ? `${monthLabel(mo - 1)} ${toEthiopian(y, mo, 15).year}`
-      : new Date(y, mo - 1, 1).toLocaleDateString(locale(), { month: "long", year: "numeric" });
+  for (const m of seasonMonths(data)) {
     const row = el("tr");
-    [name, m.days, num(m.etc_mm, 0), num(m.effective_rain_mm, 0), num(m.gross_mm, 0), num(m.m3, 1)]
+    [m.name, m.days, num(m.etc_mm, 0), num(m.effective_rain_mm, 0), num(m.gross_mm, 0), num(m.m3, 1)]
       .forEach((c) => row.appendChild(el("td", {}, String(c))));
     tbody.appendChild(row);
   }
