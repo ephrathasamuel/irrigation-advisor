@@ -45,7 +45,7 @@ Five sections, reachable from the top menu:
 - **My field:** soil at the exact spot from **SoilGrids** (sand, silt and clay %, USDA texture class, pH, organic carbon, black cotton soil warning), elevation, and long-term rainfall from NASA POWER.
 - **Guide:** how the plan is calculated, how to identify soil by hand (the ribbon test), which watering method is which, what "mm of water" means, and every term used.
 
-Language (English or Amharic) and theme (light or dark) are switched from the header and remembered on the device. The first visit opens with a real example plan for a wheat field near Bishoftu, so every page has content straight away.
+Language (English or Amharic) and theme (light or dark) are switched from the header and remembered on the device. In Amharic the app uses the **Ethiopian calendar** throughout: dates are entered with day, Ethiopian month and year drop-downs (Pagume offers 5 or 6 days), every date is shown in Ethiopian form, and the season table is grouped into Ethiopian months of 30 days. In English it uses the Gregorian calendar. Dates are converted exactly through the Julian Day Number, so switching language keeps the same day. The first visit opens with a real example plan for a wheat field near Bishoftu, so every page has content straight away.
 
 In the plan itself:
 
