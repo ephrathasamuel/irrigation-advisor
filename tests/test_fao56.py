@@ -3,7 +3,7 @@ from datetime import date, timedelta
 import pytest
 
 from app.crops import CROPS, ROOT_INITIAL_M
-from app.fao56 import crop_stage, effective_rain, stress_coefficient, water_balance
+from app.fao56 import adjust_kc, crop_stage, effective_rain, stress_coefficient, water_balance, wind_at_2m
 
 WHEAT = CROPS["wheat"]  # stages 20/25/60/30, Kc 0.30/1.15/0.25, roots to 1.25 m
 
@@ -108,3 +108,30 @@ def test_past_days_never_irrigate_and_stress_slows_use():
     assert all(r["irrigation_net"] == 0 for r in out)
     assert out[-1]["ks"] < 1.0
     assert out[-1]["depletion"] <= out[-1]["taw"]
+
+
+def test_capped_waterings_refill_in_smaller_doses():
+    # Same field as above, but no watering may put in more than 35 mm.
+    planting = date(2026, 1, 1)
+    start = planting + timedelta(days=60)
+    days = _days(start, [10.0] * 12)       # 11.5 mm/day crop use
+    out = water_balance(days, WHEAT, 155, planting, start, start, 0.75, max_net_mm=35)
+    events = [r for r in out if r["irrigation_net"] > 0]
+    assert all(e["irrigation_net"] <= 35 for e in events)
+    assert events[0]["date"] == (start + timedelta(days=3)).isoformat()  # 4 x 11.5 = 46 > 35
+    assert all(r["depletion"] <= r["raw"] for r in out)
+
+
+def test_wind_at_2m_follows_eq_47():
+    assert wind_at_2m(3.2) == pytest.approx(3.2 * 0.748, abs=0.01)
+
+
+def test_kc_adjustment_follows_eq_62():
+    # Dry, windy air raises Kc mid for a 1 m crop: (0.04*2 - 0.004*(-15)) * (1/3)**0.3 = 0.1007
+    wheat = adjust_kc(WHEAT, u2=4.0, rh_min=30.0)
+    assert wheat["kc"][1] == pytest.approx(1.15 + 0.1007, abs=1e-3)
+    assert wheat["kc"][2] == WHEAT["kc"][2]  # Kc end 0.25 < 0.45: harvested dry, not adjusted
+    assert WHEAT["kc"][1] == 1.15             # the table itself is left alone
+    # Standard climate: no change. Values outside the valid range are clipped.
+    assert adjust_kc(WHEAT, 2.0, 45.0)["kc"] == WHEAT["kc"]
+    assert adjust_kc(WHEAT, 20.0, 5.0)["kc"] == adjust_kc(WHEAT, 6.0, 20.0)["kc"]

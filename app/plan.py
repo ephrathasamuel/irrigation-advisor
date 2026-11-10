@@ -3,7 +3,7 @@
 from datetime import date
 
 from .crops import CROPS, METHODS, SOILS
-from .fao56 import crop_stage, season_length, water_balance
+from .fao56 import adjust_kc, crop_stage, season_length, water_balance, wind_at_2m
 
 
 class InputError(ValueError):
@@ -87,7 +87,12 @@ def build_plan(inputs, forecast, climate=None, climate_error=None):
              f"full on that day rather than on {last_wet.isoformat()}. The real soil may be drier.",
              date=first_day.isoformat(), last_wet=last_wet.isoformat())
 
-    records = water_balance(days, crop, soil["taw_mm_per_m"], planting, start, today, method["efficiency"])
+    kc_climate = _local_climate(days)
+    if kc_climate:
+        crop = adjust_kc(crop, kc_climate["u2_ms"], kc_climate["rh_min_pct"])
+
+    records = water_balance(days, crop, soil["taw_mm_per_m"], planting, start, today,
+                            method["efficiency"], method["max_net_mm"])
     past = [r for r in records if not r["forecast"] and r["stage"]]
     future = [r for r in records if r["forecast"]]
     if not future:
@@ -127,6 +132,10 @@ def build_plan(inputs, forecast, climate=None, climate_error=None):
              "litres_per_ha": round(r["irrigation_gross"] * 10_000)}
             for r in events
         ],
+        "max_net_per_watering_mm": method["max_net_mm"],
+        "kc_table": list(CROPS[inputs["crop"]]["kc"]),
+        "kc_adjusted": list(crop["kc"]),
+        "kc_climate": kc_climate,
         "next_irrigation": events[0]["date"] if events else None,
         "irrigate_today": bool(today_rec and today_rec["irrigation_net"] > 0),
     }
@@ -164,6 +173,17 @@ def build_plan(inputs, forecast, climate=None, climate_error=None):
             for d in days
         ],
     }
+
+
+def _local_climate(days):
+    """Mean wind at 2 m and minimum humidity over the fetched days, or None
+    when the weather service did not send them."""
+    winds = [d["wind_mean"] for d in days if d.get("wind_mean") is not None]
+    rhs = [d["rh_min"] for d in days if d.get("rh_min") is not None]
+    if not winds or not rhs:
+        return None
+    return {"u2_ms": round(wind_at_2m(sum(winds) / len(winds) / 3.6), 2),
+            "rh_min_pct": round(sum(rhs) / len(rhs), 1)}
 
 
 def _depletion_before(records, today):

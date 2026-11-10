@@ -4,6 +4,8 @@ References are to FAO Irrigation and Drainage Paper No. 56 (1998).
 All depths are in millimetres of water unless stated otherwise.
 """
 
+from math import log
+
 from .crops import ROOT_INITIAL_M
 
 # Rain below this depth mostly wets leaves and the soil surface and evaporates.
@@ -47,6 +49,27 @@ def crop_stage(crop, days_after_planting):
     return stage, kc, root
 
 
+def wind_at_2m(speed_10m_ms):
+    """Wind speed at 2 m from a 10 m reading (FAO-56 eq. 47)."""
+    return speed_10m_ms * 4.87 / log(67.8 * 10 - 5.42)
+
+
+def adjust_kc(crop, u2, rh_min):
+    """Kc mid and end for the local climate (FAO-56 eq. 62).
+
+    Table 12 values are for a sub-humid climate (RHmin 45%, u2 2 m/s). Drier,
+    windier air raises Kc for tall crops; humid, calm air lowers it. u2 and
+    RHmin are clipped to the ranges the equation is valid for. Kc end is only
+    adjusted when it is at least 0.45 (crops not left to dry in the field).
+    """
+    u2 = min(max(u2, 1.0), 6.0)
+    rh_min = min(max(rh_min, 20.0), 80.0)
+    shift = (0.04 * (u2 - 2) - 0.004 * (rh_min - 45)) * (crop["height_m"] / 3) ** 0.3
+    kc_ini, kc_mid, kc_end = crop["kc"]
+    kc_end_adj = kc_end + shift if kc_end >= 0.45 else kc_end
+    return {**crop, "kc": (kc_ini, round(kc_mid + shift, 3), round(kc_end_adj, 3))}
+
+
 def season_length(crop):
     return None if crop["stages"] is None else sum(crop["stages"])
 
@@ -67,14 +90,16 @@ def stress_coefficient(depletion, taw, raw):
     return max(0.0, (taw - depletion) / (taw - raw))
 
 
-def water_balance(days, crop, taw_per_m, planting_date, start_date, today, efficiency):
+def water_balance(days, crop, taw_per_m, planting_date, start_date, today, efficiency, max_net_mm=None):
     """Daily root-zone depletion (FAO-56 eq. 85), starting full on start_date.
 
     days: list of {"date": date, "et0": mm, "rain": mm}, in date order.
     Before today the balance uses what actually happened (no irrigation is
     assumed after start_date, and the crop is slowed down by water stress).
     From today on, the field is irrigated back to field capacity whenever
-    depletion passes the readily available water (RAW).
+    depletion passes the readily available water (RAW). With max_net_mm, no
+    watering puts in more than that: the field is watered once depletion
+    reaches it, and a larger deficit is refilled over consecutive days.
 
     Returns one record per day from start_date, plus whether the soil ran dry.
     """
@@ -108,9 +133,10 @@ def water_balance(days, crop, taw_per_m, planting_date, start_date, today, effic
 
         net = 0.0
         peak = depletion
-        if forecast and depletion > raw:
-            net = depletion
-            depletion = 0.0
+        trigger = raw if max_net_mm is None else min(raw, max_net_mm)
+        if forecast and depletion > trigger:
+            net = depletion if max_net_mm is None else min(depletion, max_net_mm)
+            depletion -= net
 
         rec.update(
             kc=round(kc, 3),

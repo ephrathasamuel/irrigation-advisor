@@ -14,6 +14,7 @@ Where FAO-56 gives a range, the middle of the range is used.
 # stages: (initial, development, mid-season, late season) in days
 # root_max_m: maximum effective rooting depth in metres
 # p: fraction of total available water the crop can use before it is stressed
+# height_m: typical maximum crop height, Table 12 (used by the eq. 62 Kc adjustment)
 CROPS = {
     "wheat": {
         "name": "Wheat (spring)",
@@ -21,6 +22,7 @@ CROPS = {
         "stages": (20, 25, 60, 30),       # Table 11, spring wheat
         "root_max_m": 1.25,               # Table 22: 1.0-1.5 m
         "p": 0.55,                        # Table 22
+        "height_m": 1.0,                  # Table 12, spring wheat
     },
     "teff": {
         # Teff is not listed in FAO-56. Values for small grains (barley/oats,
@@ -31,6 +33,7 @@ CROPS = {
         "stages": (15, 25, 50, 30),
         "root_max_m": 0.60,
         "p": 0.55,
+        "height_m": 1.0,                  # small grains, Table 12
     },
     "maize": {
         "name": "Maize (grain)",
@@ -38,6 +41,7 @@ CROPS = {
         "stages": (30, 40, 50, 30),       # Table 11, maize grain (typical values)
         "root_max_m": 1.35,               # Table 22: 1.0-1.7 m
         "p": 0.55,                        # Table 22
+        "height_m": 2.0,                  # Table 12, maize field corn
     },
     "tomato": {
         "name": "Tomato",
@@ -45,6 +49,7 @@ CROPS = {
         "stages": (30, 40, 40, 25),       # Table 11, tomato
         "root_max_m": 1.10,               # Table 22: 0.7-1.5 m
         "p": 0.40,                        # Table 22
+        "height_m": 0.6,                  # Table 12, tomato
     },
     "onion": {
         "name": "Onion (dry bulb)",
@@ -52,6 +57,7 @@ CROPS = {
         "stages": (15, 25, 70, 40),       # Table 11, onion dry
         "root_max_m": 0.45,               # Table 22: 0.3-0.6 m
         "p": 0.30,                        # Table 22
+        "height_m": 0.4,                  # Table 12, onion dry
     },
     "coffee": {
         # Perennial: treated as a mature crop all year (no growth stages).
@@ -60,6 +66,7 @@ CROPS = {
         "stages": None,
         "root_max_m": 1.20,               # Table 22: 0.9-1.5 m
         "p": 0.40,                        # Table 22
+        "height_m": 2.5,                  # Table 12: 2-3 m
     },
 }
 
@@ -78,8 +85,11 @@ SOILS = {
 
 # Application efficiency: share of the water applied that ends up in the root zone.
 # Typical design values (FAO Irrigation Water Management Training Manual No. 4).
+# max_net_mm: the most one watering puts into the root zone. Larger needs are
+# met with more frequent, smaller waterings. Assumption: practical sizes for
+# smallholder furrows, sprinkler sets and drip lines, not FAO table values.
 METHODS = {
-    "furrow":    {"name": "Furrow / basin", "efficiency": 0.60},
-    "sprinkler": {"name": "Sprinkler",      "efficiency": 0.75},
-    "drip":      {"name": "Drip",           "efficiency": 0.90},
+    "furrow":    {"name": "Furrow / basin", "efficiency": 0.60, "max_net_mm": 60},
+    "sprinkler": {"name": "Sprinkler",      "efficiency": 0.75, "max_net_mm": 35},
+    "drip":      {"name": "Drip",           "efficiency": 0.90, "max_net_mm": 15},
 }

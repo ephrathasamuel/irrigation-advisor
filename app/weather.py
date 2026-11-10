@@ -26,7 +26,7 @@ def fetch_forecast(lat, lon, session=requests):
         "latitude": lat,
         "longitude": lon,
         "daily": ("et0_fao_evapotranspiration,precipitation_sum,temperature_2m_max,temperature_2m_min,"
-                  "wind_speed_10m_max,precipitation_probability_max"),
+                  "wind_speed_10m_max,precipitation_probability_max,wind_speed_10m_mean,relative_humidity_2m_min"),
         "past_days": PAST_DAYS,
         "forecast_days": FORECAST_DAYS,
         "timezone": "auto",
@@ -55,6 +55,9 @@ def fetch_forecast(lat, lon, session=requests):
             # Optional extras for the weather view; older responses and test data may not have them.
             "wind_max": _at(daily.get("wind_speed_10m_max"), i),
             "rain_chance": _at(daily.get("precipitation_probability_max"), i),
+            # For the FAO-56 eq. 62 Kc adjustment (wind in km/h at 10 m, as Open-Meteo sends it).
+            "wind_mean": _at(daily.get("wind_speed_10m_mean"), i),
+            "rh_min": _at(daily.get("relative_humidity_2m_min"), i),
         })
     if not days:
         raise WeatherError("Open-Meteo has no evapotranspiration data for this location.")
