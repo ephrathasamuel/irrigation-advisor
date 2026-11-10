@@ -420,13 +420,17 @@ function headlineText(plan) {
   const more = s.irrigation_events.length > 1
     ? t("res.go_many", { n: s.irrigation_events.length, total: num(s.irrigation_gross_mm) })
     : t("res.go_once");
+  // Older saved plans have no cap; skip the note for them.
+  const capped = s.max_net_per_watering_mm != null
+    && s.irrigation_events.some((e) => e.net_mm >= s.max_net_per_watering_mm - 0.05);
+  const split = capped ? ` ${t("res.split", { max: num(s.max_net_per_watering_mm, 0) })}` : "";
   return {
     ok: false,
     big: t("res.go_t", { when, mm: num(first.gross_mm) }),
     small: `${t("res.go", {
       litres: whole(first.litres_per_ha), perm2: num(first.gross_mm, 0),
       method: midSentence(t(`method.${plan.inputs.method}`)), net: num(first.net_mm),
-    })} ${more}`,
+    })} ${more}${split}`,
   };
 }
 
@@ -458,7 +462,9 @@ function renderPlan(plan) {
     [t("res.stat_use"), `${num(s.week_crop_water_use_mm)} mm`, t("res.stat_use_n", { et0: num(s.week_et0_mm) })],
     [t("res.stat_rain"), `${num(s.week_rain_mm)} mm`, t("res.stat_rain_n", { eff: num(s.week_effective_rain_mm) })],
     [t("res.stat_soil"), `${num(s.soil_depletion_start_of_today_mm)} mm`, t("res.stat_soil_n", { raw: num(s.raw_mm), taw: num(s.taw_mm) })],
-    [t("res.stat_stage"), stageName(s.stage), t("res.stat_stage_n", { kc: num(s.kc_today, 2), root: num(s.root_depth_m, 2), day: s.days_after_planting ?? "–" })],
+    [t("res.stat_stage"), stageName(s.stage),
+      t("res.stat_stage_n", { kc: num(s.kc_today, 2), root: num(s.root_depth_m, 2), day: s.days_after_planting ?? "–" })
+        + (s.kc_climate ? ` (${t("res.kc_adj")})` : "")],
   ];
   const statBox = $("stats");
   statBox.innerHTML = "";
