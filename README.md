@@ -2,7 +2,7 @@
 
 Irrigation Advisor tells a farmer or extension officer **when to irrigate over the next 7 days and how much water to apply**. You find the field by typing a village name or tapping the map, then enter the crop, planting date, soil and irrigation method. The app downloads real weather for that spot, reads world soil maps to suggest the soil type, runs the FAO-56 crop water method day by day, and turns the result into a plan. The whole interface is available in **English and Amharic**, in light and dark themes, with a plain-language explanation under every question.
 
-**Live:** https://irrigation-advisor.vercel.app
+**Live:** https://irrigation-advisor-ca3x.vercel.app
 
 It is a working prototype built in Python (Flask) with a plain JavaScript front end.
 
