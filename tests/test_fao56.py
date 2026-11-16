@@ -135,3 +135,10 @@ def test_kc_adjustment_follows_eq_62():
     # Standard climate: no change. Values outside the valid range are clipped.
     assert adjust_kc(WHEAT, 2.0, 45.0)["kc"] == WHEAT["kc"]
     assert adjust_kc(WHEAT, 20.0, 5.0)["kc"] == adjust_kc(WHEAT, 6.0, 20.0)["kc"]
+
+
+def test_humid_calm_air_lowers_kc_mid():
+    # Humid, calm air lowers Kc mid: (0.04*(1-2) - 0.004*(70-45)) * (1/3)**0.3 = -0.1007
+    wheat = adjust_kc(WHEAT, u2=1.0, rh_min=70.0)
+    assert wheat["kc"][1] == pytest.approx(1.15 - 0.1007, abs=1e-3)
+    assert wheat["kc"][1] < WHEAT["kc"][1]
