@@ -3,7 +3,7 @@ from datetime import date, timedelta
 import pytest
 
 from app.crops import CROPS, ROOT_INITIAL_M
-from app.fao56 import adjust_kc, crop_stage, effective_rain, stress_coefficient, water_balance, wind_at_2m
+from app.fao56 import adjust_kc, crop_stage, effective_rain, season_length, stress_coefficient, water_balance, wind_at_2m
 
 WHEAT = CROPS["wheat"]  # stages 20/25/60/30, Kc 0.30/1.15/0.25, roots to 1.25 m
 
@@ -142,3 +142,8 @@ def test_humid_calm_air_lowers_kc_mid():
     wheat = adjust_kc(WHEAT, u2=1.0, rh_min=70.0)
     assert wheat["kc"][1] == pytest.approx(1.15 - 0.1007, abs=1e-3)
     assert wheat["kc"][1] < WHEAT["kc"][1]
+
+
+def test_season_length_sums_the_stages():
+    assert season_length(WHEAT) == 20 + 25 + 60 + 30
+    assert season_length(CROPS["coffee"]) is None  # perennial: no season end
